@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Activity Junior & Family</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+        }
+
+        header {
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #38bdf8, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            border-radius: 0.75rem;
+            padding: 0.85rem 1.5rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #38bdf8, #2563eb);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            border: 1px solid var(--border-glass);
+        }
+
+        .btn-icon {
+            padding: 0.6rem;
+            border-radius: 0.5rem;
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="text"], input[type="number"], select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-glass);
+            border-radius: 0.6rem;
+            padding: 0.75rem 1rem;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .team-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .team-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .score-pill-group {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .pill-btn {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-glass);
+            color: #94a3b8;
+            padding: 0.75rem;
+            border-radius: 0.6rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill-btn.active {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--accent-blue);
+            color: #38bdf8;
+        }
+
+        .timer-options {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .timer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .timer-input {
+            width: 70px;
+            text-align: center;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            text-transform: none;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        .scoreboard {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .score-card {
+            flex: 1;
+            min-width: 110px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-glass);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .score-card.active {
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .score-name {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .score-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-top: 0.2rem;
+        }
+
+        .task-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: 2rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .task-desc { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+        .task-draw { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #c084fc; }
+        .task-mime { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+
+        .word-reveal-box {
+            position: relative;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 1rem;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .word-cover {
+            position: absolute;
+            inset: 0;
+            background: rgba(30, 41, 59, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+
+        .word-cover.hidden {
+            display: none;
+        }
+
+        .secret-word {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+            text-align: center;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .points-tag {
+            font-size: 1rem;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            color: #38bdf8;
+        }
+
+        .timer-circle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .timer-svg {
+            transform: rotate(-90deg);
+            width: 140px;
+            height: 140px;
+        }
+
+        .timer-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+
+        .timer-bar {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke: var(--accent-blue);
+            transition: stroke-dashoffset 0.1s linear, stroke 0.3s;
+        }
+
+        .timer-text {
+            position: absolute;
+            font-size: 2.25rem;
+            font-weight: 800;
+            font-family: monospace;
+        }
+
+        .canvas-container {
+            background: #fff;
+            border-radius: 1rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            margin-top: 15rem; /* Velká bezpečnostní mezera pro odscrollování */
+        }
+
+        .canvas-toolbar {
+            background: #1e293b;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .color-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        .color-dot.active {
+            transform: scale(1.15);
+            box-shadow: 0 0 0 2px var(--accent-blue);
+        }
+
+        canvas {
+            touch-action: none;
+            background: #ffffff;
+            cursor: crosshair;
+            width: 100%;
+            height: 380px;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .winner-banner {
+            text-align: center;
+            padding: 2.5rem;
+        }
+
+        .winner-trophy {
+            font-size: 5rem;
+            color: #fbbf24;
+            margin-bottom: 1rem;
+            animation: bounce 1.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fa-solid fa-shapes"></i> Activity</h1>
+        <p class="subtitle">Společenská párty hra pro týmy</p>
+    </header>
+
+    <!-- SETUP VIEW -->
+    <div id="setup-view" class="view-section active">
+        <div class="glass-panel">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-blue);">
+                <i class="fa-solid fa-users"></i> Týmy
+            </h2>
+            <div id="teams-container" class="team-list"></div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="addTeam()" style="flex: 1;">
+                    <i class="fa-solid fa-plus"></i> Přidat tým
+                </button>
+                <button class="btn btn-secondary" onclick="removeTeam()" style="flex: 1;">
+                    <i class="fa-solid fa-minus"></i> Odebrat tým
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-purple);">
+                <i class="fa-solid fa-trophy"></i> Cílové skóre
+            </h2>
+            <div class="score-pill-group">
+                <div class="pill-btn" onclick="setTargetScore(15)">15 b</div>
+                <div class="pill-btn active" onclick="setTargetScore(25)">25 b</div>
+                <div class="pill-btn" onclick="setTargetScore(35)">35 b</div>
+                <div class="pill-btn" onclick="setTargetScore(50)">50 b</div>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-amber);">
+                <i class="fa-solid fa-sliders"></i> Pravidla a rotace
+            </h2>
+            <div class="form-group">
+                <label>Režim disciplín</label>
+                <select id="task-mode" onchange="gameConfig.taskMode = this.value">
+                    <option value="auto">Automatická rotace (střídání se snahou o různý start)</option>
+                    <option value="manual">Volný výběr (tým si před kolem vybere sám)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="swap-rule-toggle" checked onchange="gameConfig.allowSwap = this.checked">
+                    <span>Povolit 1× výměnu slova za tah (-1 bod z hodnoty)</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-green);">
+                <i class="fa-solid fa-stopwatch"></i> Nastavení času
+            </h2>
+            <div class="timer-options">
+                <div id="btn-timer-unified" class="pill-btn active" style="flex: 1;" onclick="setTimerMode('unified')">Jednotný čas</div>
+                <div id="btn-timer-split" class="pill-btn" style="flex: 1;" onclick="setTimerMode('split')">Různý pro úkoly</div>
+            </div>
+
+            <div id="timer-unified-group" class="timer-row">
+                <span>Čas na kolo (sekundy):</span>
+                <input type="number" id="time-unified" class="timer-input" value="60" min="15" max="180">
+            </div>
+
+            <div id="timer-split-group" style="display: none;">
+                <div class="timer-row">
+                    <span><i class="fa-solid fa-comment" style="color: var(--accent-blue);"></i> Popis:</span>
+                    <input type="number" id="time-desc" class="timer-input" value="60" min="15" max="180">
+                </div>
+                <div class="timer-row">
+                    <span><i class="fa-solid fa-palette" style="color: var(--accent-purple);"></i> Kreslení:</span>
+                    <input type="number" id="time-draw" class="timer-input" value="90" min="15" max="180">
+                </div>
+                <div class="timer-row">
+                    <span><i class="fa-solid fa-person-walking" style="color: var(--accent-amber);"></i> Pantomima:</span>
+                    <input type="number" id="time-mime" class="timer-input" value="60" min="15" max="180">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="startGame()" style="font-size: 1.2rem; padding: 1.2rem;">
+            <i class="fa-solid fa-play"></i> Začít hru
+        </button>
+    </div>
+
+    <!-- GAME VIEW -->
+    <div id="game-view" class="view-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div id="scoreboard" class="scoreboard" style="flex: 1;"></div>
+            <button class="btn btn-secondary btn-icon" onclick="openSettingsModal()" style="margin-left: 0.5rem;" title="Nastavení času">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+
+        <!-- Task Selector for Manual Mode -->
+        <div id="manual-task-selector" class="glass-panel" style="display: none; text-align: center;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Zvolte disciplínu pro tento tah:</h3>
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <button class="btn btn-secondary" onclick="selectManualTask('desc')">
+                    <i class="fa-solid fa-comment" style="color: var(--accent-blue);"></i> Popis
+                </button>
+                <button class="btn btn-secondary" onclick="selectManualTask('draw')">
+                    <i class="fa-solid fa-palette" style="color: var(--accent-purple);"></i> Kreslení
+                </button>
+                <button class="btn btn-secondary" onclick="selectManualTask('mime')">
+                    <i class="fa-solid fa-person-walking" style="color: var(--accent-amber);"></i> Pantomima
+                </button>
+            </div>
+        </div>
+
+        <!-- Current Round Info -->
+        <div id="round-display" class="glass-panel" style="text-align: center;">
+            <div style="font-size: 1.1rem; color: #94a3b8; margin-bottom: 0.25rem;">Na řadě je tým</div>
+            <div id="current-team-name" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; margin-bottom: 1rem;">Tým 1</div>
+            
+            <div id="current-task-badge" class="task-badge task-desc">
+                <i class="fa-solid fa-comment"></i> <span>Popis</span>
+            </div>
+
+            <!-- Secret Word Area -->
+            <div class="word-reveal-box" id="word-reveal-box">
+                <div id="word-cover" class="word-cover" onclick="revealSecretWord()">
+                    <i class="fa-solid fa-eye" style="font-size: 2.5rem; color: var(--accent-blue);"></i>
+                    <span style="font-weight: 700; font-size: 1.1rem;">Klepni pro odhalení slova</span>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">Odhalení ihned spustí časomíru!</span>
+                </div>
+                <div id="secret-word" class="secret-word">---</div>
+                <div id="secret-points" class="points-tag">3 body</div>
+                <button id="swap-word-btn" class="btn btn-warning" onclick="swapCurrentWord()" style="display: none; margin-top: 1rem; font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                    <i class="fa-solid fa-rotate"></i> Vyměnit slovo (-1 bod)
+                </button>
+            </div>
+
+            <!-- Timer Area -->
+            <div class="timer-circle-container">
+                <svg class="timer-svg" viewBox="0 0 100 100">
+                    <circle class="timer-bg" cx="50" cy="50" r="42" />
+                    <circle id="timer-bar" class="timer-bar" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="0" />
+                </svg>
+                <div id="timer-display" class="timer-text">60</div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;">
+                <button id="timer-toggle-btn" class="btn btn-secondary" onclick="toggleTimerPause()" style="font-size: 0.9rem;" disabled>
+                    <i class="fa-solid fa-pause"></i> Pozastavit
+                </button>
+            </div>
+
+            <!-- Round Result Controls -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <button class="btn btn-danger" onclick="endTurn(false)">
+                    <i class="fa-solid fa-xmark"></i> Neuhádnuto (0 b)
+                </button>
+                <button class="btn btn-success" onclick="endTurn(true)">
+                    <i class="fa-solid fa-check"></i> Uhádnuto!
+                </button>
+            </div>
+
+            <!-- Canvas Area for Drawing (s odsazením) -->
+            <div id="drawing-section" class="canvas-container" style="display: none;">
+                <div class="canvas-toolbar">
+                    <div class="color-dot active" style="background: #000;" onclick="setCanvasColor('#000000', this)"></div>
+                    <div class="color-dot" style="background: #ef4444;" onclick="setCanvasColor('#ef4444', this)"></div>
+                    <div class="color-dot" style="background: #38bdf8;" onclick="setCanvasColor('#38bdf8', this)"></div>
+                    <div class="color-dot" style="background: #22c55e;" onclick="setCanvasColor('#22c55e', this)"></div>
+                    <div class="color-dot" style="background: #f59e0b;" onclick="setCanvasColor('#f59e0b', this)"></div>
+                    
+                    <button class="btn btn-secondary btn-icon" onclick="setEraser()" title="Guma">
+                        <i class="fa-solid fa-eraser"></i>
+                    </button>
+                    <button class="btn btn-secondary btn-icon" onclick="clearCanvas()" title="Smazat vše">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <span style="font-size: 0.75rem; color: #94a3b8; margin-left: auto;">Kreslicí plátno</span>
+                </div>
+                <canvas id="paint-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINNER VIEW -->
+    <div id="winner-view" class="view-section">
+        <div class="glass-panel winner-banner">
+            <i class="fa-solid fa-trophy winner-trophy"></i>
+            <h2 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem; color: #fff;">Máme vítěze!</h2>
+            <div id="winner-name" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; margin-bottom: 2rem;">Tým 1</div>
+            <button class="btn btn-primary" onclick="resetGameToSetup()" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                <i class="fa-solid fa-rotate-right"></i> Nová hra
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Mid-game Timer Settings -->
+<div id="settings-modal" class="modal-overlay">
+    <div class="glass-panel" style="width: 100%; max-width: 400px; background: #1e293b;">
+        <h3 style="font-size: 1.2rem; margin-bottom: 1rem;"><i class="fa-solid fa-gear"></i> Úprava časů během hry</h3>
+        <div class="timer-row">
+            <span>Popis:</span>
+            <input type="number" id="modal-time-desc" class="timer-input" min="10" max="240">
+        </div>
+        <div class="timer-row">
+            <span>Kreslení:</span>
+            <input type="number" id="modal-time-draw" class="timer-input" min="10" max="240">
+        </div>
+        <div class="timer-row">
+            <span>Pantomima:</span>
+            <input type="number" id="modal-time-mime" class="timer-input" min="10" max="240">
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn btn-secondary" onclick="closeSettingsModal()" style="flex: 1;">Zavřít</button>
+            <button class="btn btn-primary" onclick="saveSettingsModal()" style="flex: 1;">Uložit</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* Web Audio Sound Synthesizer */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep(freq = 440, type = 'sine', duration = 0.08) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playSuccessSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, now + idx * 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + idx * 0.09);
+            osc.stop(now + idx * 0.09 + 0.25);
+        });
+    }
+
+    function playTimeoutSound() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        [350, 260, 180].forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.25, now + idx * 0.14);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + idx * 0.14);
+            osc.stop(now + idx * 0.14 + 0.2);
+        });
+    }
+
+    /* Word Database (Obecná, pestrá slova s body 1-3) */
+    const WORDS_DB = [
+        // 1 bod (lehčí)
+        { w: "Pes", pts: 1 }, { w: "Kolo", pts: 1 }, { w: "Kniha", pts: 1 }, { w: "Slunce", pts: 1 },
+        { w: "Kytara", pts: 1 }, { w: "Hodinový manžel", pts: 1 }, { w: "Mobilní telefon", pts: 1 },
+        { w: "Auto", pts: 1 }, { w: "Ryba", pts: 1 }, { w: "Zmrzlina", pts: 1 }, { w: "Spánek", pts: 1 },
+        { w: "Fotbal", pts: 1 }, { w: "Brýle", pts: 1 }, { w: "Kočka", pts: 1 }, { w: "Snídaně", pts: 1 },
+        { w: "Klíče", pts: 1 }, { w: "Strom", pts: 1 }, { w: "Déšť", pts: 1 }, { w: "Televize", pts: 1 },
+
+        // 2 body (střední)
+        { w: "Virtuální realita", pts: 2 }, { w: "Cestování časem", pts: 2 }, { w: "Bezdrátová sluchátka", pts: 2 },
+        { w: "Horská dráha", pts: 2 }, { w: "Potápění s žraloky", pts: 2 }, { w: "Ztracený kufr", pts: 2 },
+        { w: "Ranní budíček", pts: 2 }, { w: "Létající talíř", pts: 2 }, { w: "Nákupní horečka", pts: 2 },
+        { w: "Zubní kaz", pts: 2 }, { w: "Horkovzdušný balon", pts: 2 }, { w: "Detektiv", pts: 2 },
+        { w: "Rybářský prut", pts: 2 }, { w: "Sněhová bouře", pts: 2 }, { w: "Selfie tyč", pts: 2 },
+        { w: "Záchranný kruh", pts: 2 }, { w: "Stěhování nábytku", pts: 2 }, { w: "Zaseknutý výtah", pts: 2 },
+
+        // 3 body (obtížnější)
+        { w: "Chytré hodinky", pts: 3 }, { w: "Prokrastinace", pts: 3 }, { w: "Paralelní vesmír", pts: 3 },
+        { w: "Kocovina", pts: 3 }, { w: "Výměna pneumatiky", pts: 3 }, { w: "Fobie z pavouků", pts: 3 },
+        { w: "Noční můra", pts: 3 }, { w: "Autogramiáda", pts: 3 }, { w: "Zápas sumo", pts: 3 },
+        { w: "Povolení k pobytu", pts: 3 }, { w: "Skok padákem", pts: 3 }, { w: "Vyhoření", pts: 3 },
+        { w: "Stávka na letišti", pts: 3 }, { w: "Špatné wifi připojení", pts: 3 }
+    ];
+
+    /* Game State */
+    const TASKS = ['desc', 'draw', 'mime'];
+    const TASK_META = {
+        desc: { name: 'Popis', icon: 'fa-comment', class: 'task-desc' },
+        draw: { name: 'Kreslení', icon: 'fa-palette', class: 'task-draw' },
+        mime: { name: 'Pantomima', icon: 'fa-person-walking', class: 'task-mime' }
+    };
+
+    let gameConfig = {
+        teams: ["Tým 1", "Tým 2"],
+        targetScore: 25,
+        taskMode: 'auto',
+        allowSwap: true,
+        timerMode: 'unified',
+        times: { unified: 60, desc: 60, draw: 90, mime: 60 }
+    };
+
+    let gameState = {
+        scores: [0, 0],
+        currentTeamIdx: 0,
+        teamTurnCounts: [0, 0],
+        currentTask: 'desc',
+        currentWord: null,
+        wordRevealed: false,
+        swappedThisTurn: false,
+        timeLeft: 60,
+        timerInterval: null,
+        isPaused: false
+    };
+
+    /* Setup View Management */
+    function renderSetupTeams() {
+        const cont = document.getElementById('teams-container');
+        cont.innerHTML = '';
+        gameConfig.teams.forEach((name, idx) => {
+            const row = document.createElement('div');
+            row.className = 'team-row';
+            row.innerHTML = `
+                <span style="font-weight: 700; color: #94a3b8; width: 24px;">${idx + 1}.</span>
+                <input type="text" value="${name}" onchange="gameConfig.teams[${idx}] = this.value" placeholder="Název týmu">
+            `;
+            cont.appendChild(row);
+        });
+    }
+
+    function addTeam() {
+        if (gameConfig.teams.length < 6) {
+            gameConfig.teams.push(`Tým ${gameConfig.teams.length + 1}`);
+            renderSetupTeams();
+        }
+    }
+
+    function removeTeam() {
+        if (gameConfig.teams.length > 2) {
+            gameConfig.teams.pop();
+            renderSetupTeams();
+        }
+    }
+
+    function setTargetScore(val) {
+        gameConfig.targetScore = val;
+        document.querySelectorAll('.score-pill-group .pill-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.includes(val.toString()));
+        });
+    }
+
+    function setTimerMode(mode) {
+        gameConfig.timerMode = mode;
+        document.getElementById('btn-timer-unified').classList.toggle('active', mode === 'unified');
+        document.getElementById('btn-timer-split').classList.toggle('active', mode === 'split');
+        document.getElementById('timer-unified-group').style.display = (mode === 'unified') ? 'flex' : 'none';
+        document.getElementById('timer-split-group').style.display = (mode === 'split') ? 'block' : 'none';
+    }
+
+    /* Start and Transition */
+    function startGame() {
+        // Read input times
+        gameConfig.times.unified = parseInt(document.getElementById('time-unified').value) || 60;
+        gameConfig.times.desc = parseInt(document.getElementById('time-desc').value) || 60;
+        gameConfig.times.draw = parseInt(document.getElementById('time-draw').value) || 90;
+        gameConfig.times.mime = parseInt(document.getElementById('time-mime').value) || 60;
+
+        gameState.scores = new Array(gameConfig.teams.length).fill(0);
+        gameState.teamTurnCounts = new Array(gameConfig.teams.length).fill(0);
+        gameState.currentTeamIdx = 0;
+
+        document.getElementById('setup-view').classList.remove('active');
+        document.getElementById('game-view').classList.add('active');
+        initCanvas();
+        startTurn();
+    }
+
+    function startTurn() {
+        const teamIdx = gameState.currentTeamIdx;
+        gameState.wordRevealed = false;
+        gameState.swappedThisTurn = false;
+        gameState.isPaused = false;
+        clearInterval(gameState.timerInterval);
+
+        renderScoreboard();
+        document.getElementById('current-team-name').textContent = gameConfig.teams[teamIdx];
+        document.getElementById('word-cover').classList.remove('hidden');
+        document.getElementById('swap-word-btn').style.display = 'none';
+        document.getElementById('timer-toggle-btn').disabled = true;
+
+        // Determine Task
+        if (gameConfig.taskMode === 'auto') {
+            document.getElementById('manual-task-selector').style.display = 'none';
+            // Auto rotation with staggered starting offset per team
+            const turnNumber = gameState.teamTurnCounts[teamIdx];
+            const taskIndex = (teamIdx + turnNumber) % TASKS.length;
+            setTask(TASKS[taskIndex]);
+        } else {
+            document.getElementById('manual-task-selector').style.display = 'block';
+            setTask('desc'); // default placeholder
+        }
+
+        // Pick Word
+        gameState.currentWord = getRandomWord();
+        renderWordInfo();
+
+        // Reset Timer display
+        const totalDuration = getTaskDuration(gameState.currentTask);
+        gameState.timeLeft = totalDuration;
+        updateTimerDisplay(totalDuration, totalDuration);
+        clearCanvas();
+    }
+
+    function selectManualTask(task) {
+        setTask(task);
+        const totalDuration = getTaskDuration(task);
+        gameState.timeLeft = totalDuration;
+        updateTimerDisplay(totalDuration, totalDuration);
+    }
+
+    function setTask(task) {
+        gameState.currentTask = task;
+        const meta = TASK_META[task];
+        const badge = document.getElementById('current-task-badge');
+        badge.className = `task-badge ${meta.class}`;
+        badge.innerHTML = `<i class="fa-solid ${meta.icon}"></i> <span>${meta.name}</span>`;
+
+        const drawingSection = document.getElementById('drawing-section');
+        if (task === 'draw') {
+            drawingSection.style.display = 'flex';
+            resizeCanvas();
+        } else {
+            drawingSection.style.display = 'none';
+        }
+    }
+
+    function getTaskDuration(task) {
+        if (gameConfig.timerMode === 'unified') {
+            return gameConfig.times.unified;
+        }
+        return gameConfig.times[task] || 60;
+    }
+
+    function getRandomWord() {
+        return WORDS_DB[Math.floor(Math.random() * WORDS_DB.length)];
+    }
+
+    function renderWordInfo() {
+        document.getElementById('secret-word').textContent = gameState.currentWord.w;
+        const pts = gameState.swappedThisTurn ? Math.max(1, gameState.currentWord.pts - 1) : gameState.currentWord.pts;
+        document.getElementById('secret-points').textContent = `${pts} ${pts === 1 ? 'bod' : (pts < 5 ? 'body' : 'bodů')}`;
+    }
+
+    function revealSecretWord() {
+        if (gameState.wordRevealed) return;
+        gameState.wordRevealed = true;
+        document.getElementById('word-cover').classList.add('hidden');
+        document.getElementById('timer-toggle-btn').disabled = false;
+
+        if (gameConfig.allowSwap && !gameState.swappedThisTurn) {
+            document.getElementById('swap-word-btn').style.display = 'inline-flex';
+        }
+
+        startTimerCountdown();
+    }
+
+    function swapCurrentWord() {
+        if (gameState.swappedThisTurn) return;
+        gameState.swappedThisTurn = true;
+        gameState.currentWord = getRandomWord();
+        renderWordInfo();
+        document.getElementById('swap-word-btn').style.display = 'none';
+        playBeep(600, 'triangle', 0.1);
+    }
+
+    /* Timer Logic */
+    function startTimerCountdown() {
+        clearInterval(gameState.timerInterval);
+        const totalDuration = getTaskDuration(gameState.currentTask);
+
+        gameState.timerInterval = setInterval(() => {
+            if (gameState.isPaused) return;
+
+            gameState.timeLeft--;
+            updateTimerDisplay(gameState.timeLeft, totalDuration);
+
+            if (gameState.timeLeft <= 10 && gameState.timeLeft > 0) {
+                playBeep(880, 'sine', 0.05);
+            }
+
+            if (gameState.timeLeft <= 0) {
+                clearInterval(gameState.timerInterval);
+                playTimeoutSound();
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay(remaining, total) {
+        document.getElementById('timer-display').textContent = remaining;
+        const circle = document.getElementById('timer-bar');
+        const circumference = 2 * Math.PI * 42;
+        const offset = circumference - (remaining / total) * circumference;
+        circle.style.strokeDashoffset = offset;
+
+        if (remaining <= 10) {
+            circle.style.stroke = 'var(--accent-red)';
+        } else if (remaining <= total * 0.3) {
+            circle.style.stroke = 'var(--accent-amber)';
+        } else {
+            circle.style.stroke = 'var(--accent-blue)';
+        }
+    }
+
+    function toggleTimerPause() {
+        if (!gameState.wordRevealed) return;
+        gameState.isPaused = !gameState.isPaused;
+        const btn = document.getElementById('timer-toggle-btn');
+        if (gameState.isPaused) {
+            btn.innerHTML = `<i class="fa-solid fa-play"></i> Pokračovat`;
+        } else {
+            btn.innerHTML = `<i class="fa-solid fa-pause"></i> Pozastavit`;
+        }
+    }
+
+    /* End Turn & Winner */
+    function endTurn(isSuccess) {
+        clearInterval(gameState.timerInterval);
+
+        if (isSuccess) {
+            playSuccessSound();
+            let pts = gameState.currentWord.pts;
+            if (gameState.swappedThisTurn) {
+                pts = Math.max(1, pts - 1);
+            }
+            gameState.scores[gameState.currentTeamIdx] += pts;
+        } else {
+            playTimeoutSound();
+        }
+
+        renderScoreboard();
+
+        // Check Winner
+        if (gameState.scores[gameState.currentTeamIdx] >= gameConfig.targetScore) {
+            showWinner(gameConfig.teams[gameState.currentTeamIdx]);
+            return;
+        }
+
+        // Advance Team
+        gameState.teamTurnCounts[gameState.currentTeamIdx]++;
+        gameState.currentTeamIdx = (gameState.currentTeamIdx + 1) % gameConfig.teams.length;
+        startTurn();
+    }
+
+    function renderScoreboard() {
+        const board = document.getElementById('scoreboard');
+        board.innerHTML = '';
+        gameConfig.teams.forEach((name, idx) => {
+            const card = document.createElement('div');
+            card.className = `score-card ${idx === gameState.currentTeamIdx ? 'active' : ''}`;
+            card.innerHTML = `
+                <div class="score-name">${name}</div>
+                <div class="score-val">${gameState.scores[idx]}</div>
+            `;
+            board.appendChild(card);
+        });
+    }
+
+    function showWinner(teamName) {
+        document.getElementById('game-view').classList.remove('active');
+        document.getElementById('winner-view').classList.add('active');
+        document.getElementById('winner-name').textContent = teamName;
+    }
+
+    function resetGameToSetup() {
+        document.getElementById('winner-view').classList.remove('active');
+        document.getElementById('game-view').classList.remove('active');
+        document.getElementById('setup-view').classList.add('active');
+    }
+
+    /* Canvas Drawing Implementation */
+    let canvas, ctx, isDrawing = false;
+    let currentColor = '#000000', brushSize = 4;
+
+    function initCanvas() {
+        canvas = document.getElementById('paint-canvas');
+        ctx = canvas.getContext('2d');
+
+        function startPaint(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            const { x, y } = getCoordinates(e);
+            ctx.moveTo(x, y);
+        }
+
+        function drawPaint(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const { x, y } = getCoordinates(e);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function endPaint() {
+            isDrawing = false;
+        }
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', startPaint);
+        canvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', endPaint);
+
+        canvas.addEventListener('touchstart', startPaint, { passive: false });
+        canvas.addEventListener('touchmove', drawPaint, { passive: false });
+        window.addEventListener('touchend', endPaint);
+    }
+
+    function resizeCanvas() {
+        if (!canvas) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width || 600;
+        canvas.height = 380;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function setCanvasColor(color, el) {
+        currentColor = color;
+        brushSize = 4;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        if (el) el.classList.add('active');
+    }
+
+    function setEraser() {
+        currentColor = '#ffffff';
+        brushSize = 16;
+    }
+
+    function clearCanvas() {
+        if (!ctx || !canvas) return;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    /* Modal settings mid-game */
+    function openSettingsModal() {
+        document.getElementById('modal-time-desc').value = gameConfig.times.desc;
+        document.getElementById('modal-time-draw').value = gameConfig.times.draw;
+        document.getElementById('modal-time-mime').value = gameConfig.times.mime;
+        document.getElementById('settings-modal').classList.add('active');
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settings-modal').classList.remove('active');
+    }
+
+    function saveSettingsModal() {
+        gameConfig.times.desc = parseInt(document.getElementById('modal-time-desc').value) || 60;
+        gameConfig.times.draw = parseInt(document.getElementById('modal-time-draw').value) || 90;
+        gameConfig.times.mime = parseInt(document.getElementById('modal-time-mime').value) || 60;
+        closeSettingsModal();
+    }
+
+    // Direct Boot
+    renderSetupTeams();
+</script>
+</body>
+</html>
