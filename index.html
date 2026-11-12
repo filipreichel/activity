@@ -455,6 +455,20 @@
         .modal-overlay.active {
             display: flex;
         }
+
+        /* Sbalitelný panel společného slovníku na úvodní obrazovce */
+        .dict-collapse { padding: 0; overflow: hidden; }
+        .dict-summary {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 1rem; cursor: pointer; list-style: none;
+            font-size: 1.15rem; font-weight: 700; color: var(--accent-blue);
+        }
+        .dict-summary::-webkit-details-marker { display: none; }
+        .dict-summary:hover { background: rgba(56, 189, 248, 0.07); }
+        .dict-summary-count { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: #94a3b8; }
+        .dict-summary-chevron { font-size: 0.85rem; color: #94a3b8; transition: transform 0.25s; }
+        details[open] .dict-summary-chevron { transform: rotate(180deg); }
+        .dict-body { padding: 0 1rem 1rem; text-align: center; }
     </style>
 </head>
 <body>
@@ -543,23 +557,29 @@
             </div>
         </div>
 
-        <div class="glass-panel" style="text-align: center;">
-            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent-blue);">
-                <i class="fa-solid fa-book-open"></i> Společný slovník výrazů
-            </h2>
-            <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.85rem;">
-                Přidejte vlastní výraz — ve hře se losují přednostně výrazy ostatních týmů.
-            </p>
-            <div id="dict-counts-setup" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
-            <button class="btn btn-secondary" onclick="openWordPage()" style="width: 100%;">
-                <i class="fa-solid fa-plus"></i> Přidat výraz do slovníku
-            </button>
-            <div id="dict-status-setup" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.6rem;"></div>
-        </div>
-
         <button class="btn btn-primary" onclick="startGame()" style="font-size: 1.2rem; padding: 1.2rem;">
             <i class="fa-solid fa-play"></i> Začít hru
         </button>
+
+        <!-- Společný slovník — sbalený, rozklikne se kliknutím na název -->
+        <details class="glass-panel dict-collapse" id="dict-panel">
+            <summary class="dict-summary">
+                <i class="fa-solid fa-book-open" style="color: var(--accent-blue);"></i>
+                <span>Společný slovník výrazů</span>
+                <span id="dict-summary" class="dict-summary-count"></span>
+                <i class="fa-solid fa-chevron-down dict-summary-chevron"></i>
+            </summary>
+            <div class="dict-body">
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.85rem;">
+                    Přidejte vlastní výraz — ve hře se losují přednostně výrazy ostatních týmů.
+                </p>
+                <div id="dict-counts-setup" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
+                <button class="btn btn-secondary" onclick="openWordPage()" style="width: 100%;">
+                    <i class="fa-solid fa-plus"></i> Přidat výraz do slovníku
+                </button>
+                <div id="dict-status-setup" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.6rem;"></div>
+            </div>
+        </details>
     </div>
 
     <!-- GAME VIEW -->
@@ -898,6 +918,18 @@
             const el = document.getElementById(idEl);
             if (el) el.innerHTML = html;
         });
+        const summary = document.getElementById('dict-summary');
+        if (summary) {
+            if (sharedState === 'ok') {
+                summary.textContent = sharedCounts.total ? pluralVyraz(sharedCounts.total) : 'prázdný';
+            } else if (sharedState === 'unconfigured') {
+                summary.textContent = 'nepřipojeno';
+            } else if (sharedState === 'offline') {
+                summary.textContent = 'nedostupné';
+            } else {
+                summary.textContent = '';
+            }
+        }
         let status = '';
         if (sharedState === 'unconfigured') {
             status = '⚠️ Společný slovník zatím není připojený (' + (sharedDetail || 'chybí databáze') + ') — hra používá zabudovaný slovník.';
