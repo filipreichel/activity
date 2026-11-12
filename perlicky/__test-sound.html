@@ -81,10 +81,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // 3. bez časomíry se netiká
     S.limit = 0;
     window.__starts = 0;
-    render(); openQuestion(QUESTIONS[1].id);
+    render(); openQuestion(QUESTIONS[1].id); showQuestion();
     await sleep(1500);
     check('bez časomíry žádný tón', window.__starts === 0, 'startů=' + window.__starts);
     check('bez časomíry není odpočet', q('.timer') === null || q('.timer').style.display === 'none');
+
+    // 4. posledních 5 s: jiný tón a červená barva souhlasí
+    S.limit = 7;
+    S.view = 'board';
+    render();
+    window.__tones = [];
+    openQuestion(QUESTIONS[2].id); showQuestion();
+    await sleep(2600);   // 7 → 6 (tichý tik) → 5 (jiný tón)
+    const hasQuiet = window.__tones.includes(880);
+    const hasUrgent = window.__tones.includes(1320);
+    check('do 5 s tichý tik, pak jiný tón', hasQuiet && hasUrgent, JSON.stringify(window.__tones));
+    check('barva se přepne na 5 s', (q('.timer') || {}).classList.contains('warn') === true, (q('.tnum') || {}).textContent);
 
     const failed = T.filter(x => x.startsWith('FAIL')).length;
     document.getElementById('out').textContent = T.join('\n') + (window.__err || '') + '\n\n' +

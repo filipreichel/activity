@@ -54,8 +54,10 @@
   if (p.get('m')) {
     setTimeout(() => {
       const over = document.documentElement.scrollHeight - window.innerHeight;
-      document.title = over > 0 ? 'OVERFLOW+' + over : 'FITS ' + window.innerHeight;
-    }, 400);
+      const k = getComputedStyle(document.documentElement).getPropertyValue('--fit').trim();
+      document.title = (over > 0 ? 'OVERFLOW+' + over : 'FITS ' + window.innerHeight) +
+        ' k=' + k + ' sh=' + document.documentElement.scrollHeight + ' bh=' + document.body.scrollHeight;
+    }, 1500);
   }
 </script>
 </body></html>

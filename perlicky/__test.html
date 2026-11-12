@@ -147,6 +147,24 @@ function controlTests() {
   check('řídicí okno: panel pro učitele dole', q('.teacher') !== null);
   check('panel pro učitele je až za otázkou',
     q('.qbody').compareDocumentPosition(q('.teacher')) === Node.DOCUMENT_POSITION_FOLLOWING);
+
+  /* 3b. přepínač odpovědí, oko a zvuk nesmí zastavit odpočet */
+  check('odpočet běží', timerHandle !== null);
+  click('[data-act="sound"]');
+  check('změna hlasitosti nezastaví odpočet', timerHandle !== null);
+  click('[data-act="sound"]');
+  click('[data-act="sound"]');   // zpět na tiše
+
+  click('[data-act="answers"]');
+  check('přepínač: odpověď skrytá u všech otázek', q('.teacher') === null && qa('.options li.right').length === 0);
+  check('skrytí odpovědí nezastaví odpočet', timerHandle !== null);
+  click('[data-act="peek"]');
+  check('oko: odpověď jen u této otázky', q('.teacher') !== null && qa('.options li.right').length === 1);
+  click('[data-act="peek"]');
+  check('oko znovu skryje', q('.teacher') === null);
+  click('[data-act="answers"]');
+  check('přepínač zpět: odpověď vidět', q('.teacher') !== null && q('.eye') !== null && !q('.eye').classList.contains('off'));
+
   check('krok zpět je i u otázky', q('[data-act="undo"]') !== null);
 
   /* 4. nevěděl → dialog krádeže */

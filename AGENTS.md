@@ -52,8 +52,19 @@ vlastní kolo a lze ji odmítnout · odpovídá tým jako celek, hráči se need
 **ukáže** a spustí odpočet. Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů
 pod nimi.
 
-**Zvuk:** tik odpočtu (posledních 10 s hlasitěji, poslední 3 s jinak), gong na nule,
-jiný tón pro správnou a pro špatnou odpověď. Přepínač 🔇/🔉/🔊.
+**Zvuk:** tik odpočtu, **posledních 5 s jiný (ostřejší) tón a zároveň červený odpočet**,
+gong na nule, jiný tón pro správnou a pro špatnou odpověď. Přepínač 🔇/🔉/🔊.
+Změna hlasitosti ani přepnutí odpovědí **nesmí zastavit odpočet** (render ošetřen
+předáním zbývajícího času do `startTimerFrom`).
+
+**Odpovědi u učitele:** přepínač „👁 Odpovědi“ v liště zapíná/vypíná správnou odpověď
+pro **všechny** otázky (`S.showAnswers`, ukládá se); oko u otázky (`S.peekQid`) ji
+ukáže **jen pro právě zobrazenou** otázku. Panel s odpovědí je v řídicím okně
+sticky u spodního okraje, aby byl vidět i když se otázka nevejde.
+
+**Vejít se na obrazovku:** `fitView()` po každém vykreslení zmenšuje `--fit`
+(projekce od 1,2 dolů, řídicí okno od 1,0, minimum 0,72), dokud se obsah nevejde;
+všechny velikosti písma v CSS jsou `calc(clamp(…) * var(--fit, 1))`.
 
 **Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
 výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).

@@ -38,6 +38,8 @@ function newState() {
     turn: 0,
     limit: 30,           // sekundy na odpověď, 0 = bez časomíry
     sound: 'soft',       // 'off' | 'soft' | 'loud'
+    showAnswers: true,   // ukazovat správnou odpověď učitele (přepínač pro všechny otázky)
+    peekQid: null,       // „oko“ – ukázat odpověď jen u této jedné otázky
     timeLeft: 30,        // jen pro projekci
     view: 'setup',
     current: null,
@@ -86,7 +88,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       teams: S.teams, used: S.used, turn: S.turn, limit: S.limit,
-      sound: S.sound, view: S.view, current: S.current
+      sound: S.sound, showAnswers: S.showAnswers, view: S.view, current: S.current
     }));
   } catch (e) { /* soukromý režim — hra jede dál, jen se neobnoví */ }
 }
@@ -206,10 +208,14 @@ function stopTimer() {
 }
 
 function startTimer() {
+  startTimerFrom(currentLimit());
+}
+
+function startTimerFrom(secs) {
   stopTimer();
   const lim = currentLimit();
-  timeLeft = lim;
-  S.timeLeft = timeLeft;
+  timeLeft = secs == null ? lim : Math.max(0, secs);
+  S.timeLeft = Math.max(0, timeLeft);
   paintTimer();
   broadcast();
   if (!lim) return;
@@ -218,9 +224,9 @@ function startTimer() {
     S.timeLeft = Math.max(0, timeLeft);
     paintTimer();
     broadcast();
-    if (timeLeft > 10) Sfx.tick();
-    else if (timeLeft > 3) Sfx.tickUrgent();
-    else if (timeLeft > 0) Sfx.tickFinal();
+    // barva i zvuk se přepnou společně: posledních 5 s je červeně a jiným tónem
+    if (timeLeft > 5) Sfx.tick();
+    else if (timeLeft > 0) Sfx.tickUrgent();
     if (timeLeft <= 0) {
       stopTimer();
       Sfx.gong();
@@ -465,9 +471,36 @@ function newGame(sameTeams) {
   render();
 }
 
+/* ---------------- vejít se na obrazovku ---------------- */
+
+let fitTimer = null;
+
+function fitView() {
+  const root = document.documentElement;
+  const min = IS_DISPLAY ? 0.60 : 0.72;
+  let k = IS_DISPLAY ? 1.2 : 1;
+  root.style.setProperty('--fit', k.toFixed(3));
+  let guard = 0;
+  while (document.body.scrollHeight > window.innerHeight - 2 && k > min + 0.001 && guard < 26) {
+    k -= 0.035;
+    root.style.setProperty('--fit', Math.max(min, k).toFixed(3));
+    guard++;
+  }
+}
+
+function scheduleFit() {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(fitView, 90);
+}
+
+window.addEventListener('resize', scheduleFit);
+window.addEventListener('load', scheduleFit);
+
 /* ---------------- vykreslení ---------------- */
 
 function render() {
+  const wasRunning = !!timerHandle;
+  const left = timeLeft;
   stopTimer();
   if (IS_DISPLAY) { renderDisplay(); return; }
   const v = S.view;
@@ -479,6 +512,12 @@ function render() {
   app.innerHTML += viewModal();
   window.scrollTo(0, 0);
   save(); broadcast();
+  // překreslení (zvuk, odpovědi, oko) nesmí zastavit odpočet
+  if (wasRunning && left > 0 && S.view === 'question' && S.current &&
+      S.current.phase !== 'done' && S.current.phase !== 'picked') {
+    startTimerFrom(left);
+  }
+  fitView();
 }
 
 function renderDisplay() {
@@ -490,6 +529,7 @@ function renderDisplay() {
   else app.innerHTML = viewWaiting();
   app.innerHTML += `<button class="fs-btn" data-act="fullscreen" title="Celá obrazovka">⛶</button>`;
   window.scrollTo(0, 0);
+  fitView();
 }
 
 function viewWaiting() {
@@ -536,7 +576,7 @@ function viewSetup() {
       <button class="ghost" data-act="del-team" data-id="${t.id}" title="Odebrat tým" ${S.teams.length <= 2 ? 'disabled' : ''}>✕</button>
     </div>`).join('');
 
-  const soundBtn = { off: '🔇 Zvuk vypnutý', soft: '🔉 Zvuk tiše', loud: '🔊 Zvuk nahlas' }[S.sound] || '🔉 Zvuk tiše';
+  const soundBtn = soundLong();
 
   return `
   <div class="wrap setup">
@@ -562,7 +602,7 @@ function viewSetup() {
         ${[20, 30, 45, 60, 0].map(n => `<button data-limit="${n}" class="${S.limit === n ? 'on' : ''}">${n ? n + ' s' : 'bez časomíry'}</button>`).join('')}
       </div>
       <div class="row-actions">
-        <button data-act="sound">${soundBtn}</button>
+        <button data-act="sound" data-style="long">${soundBtn}</button>
       </div>
     </div>
 
@@ -630,7 +670,7 @@ function viewBoard(disp) {
   const bar = disp ? '' : `
       ${pickedQ ? '<button class="primary" data-act="show">Zobrazit otázku →</button>' : ''}
       <button class="ghost" data-act="display-open" title="Otevřít druhé okno na projektor">🖥️ Projekce</button>
-      <button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${S.sound === 'off' ? '🔇' : S.sound === 'loud' ? '🔊' : '🔉'}</button>
+      <button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${soundIcon()}</button>
       <button class="ghost" data-act="undo" title="Vrátit poslední krok">↶ Zpět</button>
       <button class="ghost" data-act="results">Výsledky</button>
       <button class="ghost" data-act="new-game">Nová hra</button>`;
@@ -664,8 +704,10 @@ function viewQuestion(disp) {
   const offering = cur.phase === 'offer';
   const lim = currentLimit();
 
+  const showAns = !disp && (S.showAnswers || S.peekQid === cur.qid);
+
   const opts = q.options ? `<ul class="options">${q.options.map((o, i) => {
-    const isRight = !disp && q.correct === i;
+    const isRight = showAns && q.correct === i;
     return `<li class="${isRight ? 'right' : ''}"><span class="letter">${LETTERS[i]}</span><span>${esc(o)}</span></li>`;
   }).join('')}</ul>`
     : `<div class="open-note">✍️ Odpověď se říká nahlas — správnou variantu uvidíte po vyhodnocení.</div>`;
@@ -683,16 +725,17 @@ function viewQuestion(disp) {
       </div>`}
     </div>`;
 
-  const teacher = disp ? '' : `
+  const teacher = showAns ? `
     <div class="teacher">
       <div class="t-label">Pro tebe · správná odpověď</div>
       <div class="t-answer">${esc(q.answer || (q.options ? q.options[q.correct] : '') || '')}</div>
       ${q.explain ? `<div class="t-explain">${esc(q.explain)}</div>` : ''}
-    </div>`;
+    </div>` : '';
 
   const topbarRight = disp
     ? ''
-    : `<button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${S.sound === 'off' ? '🔇' : S.sound === 'loud' ? '🔊' : '🔉'}</button>
+    : `<button class="ghost ${S.showAnswers ? '' : 'dim'}" data-act="answers" title="Zobrazit / skrýt správné odpovědi u všech otázek">${S.showAnswers ? '👁' : '🙈'} Odpovědi</button>
+       <button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${soundIcon()}</button>
        <button class="ghost" data-act="undo" title="Vrátit poslední krok">↶ Zpět</button>
        <button class="ghost" data-act="cancel">✕ Zavřít otázku</button>`;
 
@@ -708,6 +751,7 @@ function viewQuestion(disp) {
       <span class="qcat" style="--c:${c.color}">${esc(c.name)}</span>
       <span class="qval">${fmt(points(q))}</span>
       ${timerMarkup()}
+      ${disp ? '' : `<button class="eye ${showAns ? '' : 'off'}" data-act="peek" title="Ukázat správnou odpověď jen u této otázky">👁</button>`}
     </div>
 
     ${box}
@@ -751,8 +795,7 @@ function stealOverlay(disp) {
         <li><span class="no">✘</span> špatná odpověď <b>−${half}</b></li>
         <li><span class="cl">⏱</span> čas na odpověď <b>${lim ? lim + ' s' : 'bez časomíry'}</b></li>
       </ul>
-      ${disp ? '<p class="sd-note">Rozhoduje tým — učitel to potvrdí v řídicím okně.</p>'
-        : `<div class="dialog-actions">
+      ${disp ? '' : `<div class="dialog-actions">
              <button class="good big" data-act="steal-yes">Krade →</button>
              <button class="bad big" data-act="steal-no">Nekrade ✕</button>
              <button class="ghost" data-act="undo">↶ Zpět</button>
@@ -875,6 +918,20 @@ function toast(msg) {
   el._t = setTimeout(() => el.classList.remove('show'), 1800);
 }
 
+function soundIcon() {
+  return S.sound === 'off' ? '🔇' : S.sound === 'loud' ? '🔊' : '🔉';
+}
+
+function soundLong() {
+  return { off: '🔇 Zvuk vypnutý', soft: '🔉 Zvuk tiše', loud: '🔊 Zvuk nahlas' }[S.sound] || '🔉 Zvuk tiše';
+}
+
+function refreshSoundButtons() {
+  document.querySelectorAll('[data-act="sound"]').forEach(b => {
+    b.textContent = b.dataset.style === 'long' ? soundLong() : soundIcon();
+  });
+}
+
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
@@ -898,7 +955,8 @@ document.addEventListener('click', e => {
     S.sound = S.sound === 'off' ? 'soft' : S.sound === 'soft' ? 'loud' : 'off';
     Sfx.unlock();
     if (S.sound !== 'off') Sfx.tick();
-    render();
+    save();
+    refreshSoundButtons();   // jen popisek, odpočet běží dál
     toast(S.sound === 'off' ? 'Zvuk vypnutý' : S.sound === 'soft' ? 'Zvuk tiše' : 'Zvuk nahlas');
     return;
   }
@@ -931,6 +989,13 @@ document.addEventListener('click', e => {
   }
   if (act === 'open') { Sfx.unlock(); openQuestion(btn.dataset.qid); return; }
   if (act === 'show') { showQuestion(); return; }
+  if (act === 'answers') { S.showAnswers = !S.showAnswers; S.peekQid = null; save(); render(); return; }
+  if (act === 'peek') {
+    const c2 = S.current;
+    if (!c2) return;
+    S.peekQid = S.peekQid === c2.qid ? null : c2.qid;
+    save(); render(); return;
+  }
   if (act === 'right') { judge(true); return; }
   if (act === 'wrong') { judge(false); return; }
   if (act === 'steal-yes') { offerAccept(); return; }
@@ -1003,6 +1068,7 @@ window.addEventListener('beforeunload', stopTimer);
     S.turn = saved.turn || 0;
     S.limit = saved.limit == null ? 30 : saved.limit;
     S.sound = saved.sound || 'soft';
+    S.showAnswers = saved.showAnswers !== false;
     S.current = saved.current || null;
     S.view = saved.view || 'setup';
     if (S.view === 'question' && !S.current) S.view = 'board';

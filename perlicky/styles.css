@@ -17,6 +17,7 @@
   --shadow: 0 1px 2px rgba(29, 26, 23, .06), 0 8px 24px rgba(29, 26, 23, .06);
   --radius: 14px;
   --font: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fit: 1;   /* dopočítané zvětšení/zmenšení, aby se obrazovka vešla */
 }
 
 * { box-sizing: border-box; }
@@ -350,7 +351,7 @@ label.field {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .03em;
-  font-size: clamp(11px, 1.05vw, 16px);
+  font-size: calc(clamp(11px, 1.05vw, 16px) * var(--fit, 1));
   line-height: 1.2;
   min-height: 3.4em;
   display: flex;
@@ -368,7 +369,7 @@ label.field {
   border: 1px solid transparent;
   border-radius: 12px;
   min-height: clamp(56px, min(7vw, 9.5vh), 104px);
-  font-size: clamp(15px, 1.9vw, 30px);
+  font-size: calc(clamp(15px, 1.9vw, 30px) * var(--fit, 1));
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--accent-ink);
@@ -487,7 +488,7 @@ label.field {
 
 .qtext {
   margin: 0;
-  font-size: clamp(19px, 2.5vw, 40px);
+  font-size: calc(clamp(19px, 2.5vw, 40px) * var(--fit, 1));
   line-height: 1.28;
   font-weight: 700;
   white-space: pre-line;
@@ -521,7 +522,7 @@ label.field {
   border: 1px solid transparent;
   border-radius: 12px;
   padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.4vw, 20px);
-  font-size: clamp(16px, 1.9vw, 27px);
+  font-size: calc(clamp(16px, 1.9vw, 27px) * var(--fit, 1));
   font-weight: 600;
   transition: background .15s ease, border-color .15s ease;
 }
@@ -602,7 +603,7 @@ label.field {
   gap: 12px;
   flex-wrap: wrap;
   margin: 0 0 14px;
-  font-size: clamp(22px, 3vw, 44px);
+  font-size: calc(clamp(22px, 3vw, 44px) * var(--fit, 1));
   font-weight: 900;
   letter-spacing: -.01em;
 }
@@ -613,7 +614,7 @@ label.field {
 
 .explain {
   margin: 0;
-  font-size: clamp(15px, 1.5vw, 22px);
+  font-size: calc(clamp(15px, 1.5vw, 22px) * var(--fit, 1));
   line-height: 1.55;
   color: #332e29;
   white-space: pre-line;
@@ -798,13 +799,13 @@ label.field {
 /* ---------------- projekce (druhé okno) ---------------- */
 
 .display-mode .wrap { max-width: 1780px; padding: clamp(16px, 2vw, 34px); }
-.display-mode .qtext { font-size: clamp(24px, 3vw, 54px); }
-.display-mode .options li { font-size: clamp(19px, 2.2vw, 34px); }
-.display-mode .board .tile { font-size: clamp(18px, 2.3vw, 40px); }
-.display-mode .cat-head { font-size: clamp(12px, 1.2vw, 19px); }
+.display-mode .qtext { font-size: calc(clamp(24px, 3vw, 54px) * var(--fit, 1)); }
+.display-mode .options li { font-size: calc(clamp(19px, 2.2vw, 34px) * var(--fit, 1)); }
+.display-mode .board .tile { font-size: calc(clamp(18px, 2.3vw, 40px) * var(--fit, 1)); }
+.display-mode .cat-head { font-size: calc(clamp(12px, 1.2vw, 19px) * var(--fit, 1)); }
 .display-mode .timer { font-size: clamp(20px, 2vw, 30px); }
 .display-mode .timer svg { width: 60px; height: 60px; }
-.display-mode .turnbox .who { font-size: clamp(18px, 2vw, 28px); }
+.display-mode .turnbox .who { font-size: calc(clamp(18px, 2vw, 28px) * var(--fit, 1)); }
 .display-mode .answer-line { font-size: clamp(26px, 3.4vw, 52px); }
 .display-mode .explain { font-size: clamp(16px, 1.7vw, 26px); }
 .display-mode .options.compact li { font-size: clamp(15px, 1.5vw, 24px); }
@@ -949,9 +950,9 @@ label.field {
 }
 .fs-btn:hover { opacity: 1; }
 
-.display-mode .answer-line { font-size: clamp(30px, 4vw, 68px); }
-.display-mode .explain { font-size: clamp(18px, 2vw, 32px); line-height: 1.45; max-width: 62ch; }
-.display-mode .options.compact li { font-size: clamp(16px, 1.7vw, 26px); }
+.display-mode .answer-line { font-size: calc(clamp(30px, 4vw, 68px) * var(--fit, 1)); }
+.display-mode .explain { font-size: calc(clamp(18px, 2vw, 32px) * var(--fit, 1)); line-height: 1.45; max-width: 62ch; }
+.display-mode .options.compact li { font-size: calc(clamp(16px, 1.7vw, 26px) * var(--fit, 1)); }
 .display-mode .reveal .qtext.reask { font-size: clamp(14px, 1.3vw, 20px) !important; }
 .display-mode .gallery-side img { max-height: min(32vh, 340px); }
 
@@ -1005,7 +1006,7 @@ label.field {
 .display-mode .qview { max-width: min(1740px, 100%); }
 .display-mode .steal-dialog { max-width: min(1000px, 92vw); }
 .display-mode .sd-team { font-size: clamp(22px, 2.4vw, 36px); }
-.display-mode .sd-terms li { font-size: clamp(18px, 1.9vw, 30px); padding: 14px 20px; }
+.display-mode .sd-terms li { font-size: calc(clamp(18px, 1.9vw, 30px) * var(--fit, 1)); padding: 14px 20px; }
 .display-mode .dialog h2 { font-size: clamp(24px, 2.6vw, 38px); }
 .display-mode .sd-note { font-size: clamp(14px, 1.4vw, 20px); }
 
@@ -1017,13 +1018,53 @@ label.field {
 /* ---------------- řídicí okno: ať se otázka vejde bez scrollování ---------------- */
 
 body:not(.display-mode) .qview .qbody { padding: clamp(14px, 1.8vw, 26px); }
-body:not(.display-mode) .qview .qtext { font-size: clamp(18px, 2vw, 32px); }
+body:not(.display-mode) .qview .qtext { font-size: calc(clamp(18px, 2vw, 32px) * var(--fit, 1)); }
 body:not(.display-mode) .qview .options { gap: 8px; }
-body:not(.display-mode) .qview .options li { font-size: clamp(15px, 1.6vw, 23px); padding: 8px 14px; }
-body:not(.display-mode) .teacher { margin-top: 12px; padding: 10px 14px; }
+body:not(.display-mode) .qview .options li { font-size: calc(clamp(15px, 1.6vw, 23px) * var(--fit, 1)); padding: 8px 14px; }
+body:not(.display-mode) .teacher {
+  margin-top: 12px;
+  padding: 10px 14px;
+  position: sticky;          /* ať je odpověď vidět i když se otázka nevejde */
+  bottom: 8px;
+  z-index: 5;
+  box-shadow: 0 -6px 22px rgba(29, 26, 23, .10);
+}
 body:not(.display-mode) .teacher .t-explain { line-height: 1.45; }
 body:not(.display-mode) .qview .turnbox { margin-bottom: 10px; padding: 10px 14px; }
 body:not(.display-mode) .qview .qhead { margin-bottom: 10px; }
 body:not(.display-mode) .qview .topbar { margin-bottom: 8px; }
+
+/* ---------------- oko: odpověď jen u této otázky ---------------- */
+
+.eye {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  font-size: 19px;
+  display: grid;
+  place-items: center;
+  margin-left: 6px;
+  padding: 0;
+}
+.eye.off { opacity: .38; filter: grayscale(1); }
+.eye:hover { border-color: var(--accent); }
+
+.ghost.dim { opacity: .55; }
+
+/* ---------------- projekce: plán čitelnější ---------------- */
+
+.display-mode .board .tile {
+  background: #f0e4cf;
+  color: #4a2800;
+  font-weight: 900;
+  border: 1px solid #e3d3b8;
+}
+.display-mode .board .tile.done { background: #e8e1d5; color: #9c9083; border-color: #ded6c7; }
+.display-mode .turn-banner { background: #efe2cd; font-weight: 700; }
+.display-mode .team-chip { border-width: 2px; }
+.display-mode .team-chip .name { font-weight: 800; }
+
 
 
