@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Přehled slovníku · Aktivity pro Ypsilon</title>
+    <title>Dashboard · Aktivity pro Ypsilon</title>
     <style>
         :root {
             --bg: #0f172a; --panel: rgba(30, 41, 59, 0.85); --border: rgba(148, 163, 184, 0.25);
@@ -63,15 +63,120 @@
         .board-detail { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.25rem; font-size: 0.75rem; }
         .board-detail span { color: var(--muted); }
         .board-detail b { color: var(--text); }
+
+        /* ── Záložky ── */
+        .tabs { display: flex; gap: 0.5rem; }
+        .tab {
+            padding: 0.55rem 1.1rem; border-radius: 999px; cursor: pointer; font-family: inherit;
+            font-weight: 800; font-size: 0.9rem; color: var(--muted);
+            border: 1px solid var(--border); background: rgba(148, 163, 184, 0.08);
+        }
+        .tab:hover { color: var(--text); border-color: var(--blue); }
+        .tab.on { background: linear-gradient(120deg, #38bdf8, #818cf8); color: #06101f; border-color: transparent; }
+        .tab-panel { display: none; flex-direction: column; gap: 1rem; }
+        .tab-panel.on { display: flex; }
+
+        /* ── Živý stav hry: čitelné z televize ── */
+        .tv-panel { padding: clamp(1rem, 2.2vw, 2rem); }
+        .tv-status {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            font-size: clamp(0.85rem, 1.2vw, 1.05rem); color: var(--muted); margin-bottom: 1rem;
+        }
+        .tv-age { font-variant-numeric: tabular-nums; }
+        .tv-main {
+            display: grid; grid-template-columns: 1fr 1.15fr; gap: clamp(1rem, 3vw, 3rem);
+            align-items: center;
+        }
+        .tv-label {
+            font-size: clamp(0.8rem, 1.15vw, 1rem); text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--muted); font-weight: 700;
+        }
+        .tv-team { font-size: clamp(1.8rem, 4.6vw, 4rem); font-weight: 900; color: var(--blue); line-height: 1.05; }
+        .tv-task {
+            display: inline-block; margin-top: 0.6rem; padding: 0.4rem 1rem; border-radius: 999px;
+            font-size: clamp(0.95rem, 1.6vw, 1.5rem); font-weight: 800;
+            background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.4); color: #bae6fd;
+        }
+        .tv-timer {
+            font-size: clamp(3rem, 10vw, 9rem); font-weight: 900; line-height: 1;
+            font-variant-numeric: tabular-nums; color: var(--green); margin-top: 0.5rem;
+        }
+        .tv-timer.low { color: var(--red); }
+        .tv-bar { height: clamp(8px, 1.1vw, 14px); border-radius: 999px; background: rgba(148, 163, 184, 0.2); overflow: hidden; margin-top: 0.6rem; }
+        .tv-bar-fill { height: 100%; width: 100%; border-radius: 999px; background: linear-gradient(90deg, #22c55e, #38bdf8); transition: width 0.4s linear; }
+        .tv-right { border-left: 1px solid var(--border); padding-left: clamp(1rem, 2.5vw, 2.5rem); }
+        .tv-word {
+            font-size: clamp(1.8rem, 5vw, 4.4rem); font-weight: 900; line-height: 1.1; margin-top: 0.4rem;
+            color: #e2e8f0; word-break: break-word;
+        }
+        .tv-word.covered { color: #64748b; font-size: clamp(1.2rem, 2.4vw, 2rem); font-weight: 700; letter-spacing: 0.02em; }
+        .tv-word-meta { margin-top: 0.6rem; font-size: clamp(0.9rem, 1.4vw, 1.25rem); color: var(--amber); font-weight: 700; min-height: 1.4em; }
+        .tv-score {
+            display: flex; gap: clamp(0.5rem, 1.4vw, 1.2rem); flex-wrap: wrap; margin-top: clamp(1rem, 2.4vw, 2rem);
+            padding-top: clamp(0.8rem, 1.8vw, 1.5rem); border-top: 1px solid var(--border);
+        }
+        .tv-team-card {
+            flex: 1 1 9rem; padding: clamp(0.6rem, 1.4vw, 1.1rem); border-radius: 1rem;
+            border: 1px solid var(--border); background: rgba(15, 23, 42, 0.45);
+        }
+        .tv-team-card.active {
+            border-color: rgba(56, 189, 248, 0.65);
+            background: linear-gradient(160deg, rgba(56, 189, 248, 0.18), rgba(168, 85, 247, 0.12));
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+        }
+        .tv-team-name { font-size: clamp(0.85rem, 1.3vw, 1.15rem); font-weight: 700; color: var(--muted); }
+        .tv-team-score { font-size: clamp(1.6rem, 3.6vw, 3rem); font-weight: 900; color: var(--text); line-height: 1.1; }
+        .tv-empty { color: var(--muted); font-size: clamp(1rem, 2vw, 1.4rem); padding: 2rem 0; text-align: center; }
+
+        /* Mobil: pod sebe */
+        @media (max-width: 760px) {
+            .tv-main { grid-template-columns: 1fr; }
+            .tv-right { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 1rem; }
+            .tv-timer { font-size: clamp(2.6rem, 16vw, 4rem); }
+        }
     </style>
 </head>
 <body>
 <div class="wrap">
     <header>
-        <h1>📋 Přehled slovníku</h1>
-        <span class="sub">Aktivity pro Ypsilon — pohled do databáze (obnovuje se sám)</span>
+        <h1>📋 Dashboard · Aktivity pro Ypsilon</h1>
+        <span class="sub" id="tab-sub">živý stav rozehrané hry</span>
     </header>
 
+    <div class="tabs">
+        <button class="tab on" data-tab="hra">🎮 Hra</button>
+        <button class="tab" data-tab="slovnik">📚 Slovník</button>
+    </div>
+
+    <!-- ── ŽIVÝ STAV HRY (optimalizováno na TV na šířku) ── -->
+    <section id="tab-hra" class="tab-panel on">
+        <div class="panel tv-panel" id="tv-wrap">
+            <div class="tv-status">
+                <span><span class="dot" id="g-dot"></span> <span id="g-status">čekám na hru…</span></span>
+                <span class="tv-age" id="g-age"></span>
+            </div>
+
+            <div class="tv-main">
+                <div class="tv-left">
+                    <div class="tv-label">Na řadě je tým</div>
+                    <div class="tv-team" id="g-team">—</div>
+                    <div class="tv-task" id="g-task">—</div>
+                    <div class="tv-timer" id="g-timer">—</div>
+                    <div class="tv-bar"><div class="tv-bar-fill" id="g-bar"></div></div>
+                </div>
+                <div class="tv-right">
+                    <div class="tv-label">Výraz</div>
+                    <div class="tv-word" id="g-word">výraz je zakrytý</div>
+                    <div class="tv-word-meta" id="g-word-meta"></div>
+                </div>
+            </div>
+
+            <div class="tv-score" id="g-score"></div>
+        </div>
+    </section>
+
+    <!-- ── SLOVNÍK ── -->
+    <section id="tab-slovnik" class="tab-panel">
     <div class="panel">
         <div class="bar">
             <span><span class="dot" id="dot"></span> <span id="conn">připojuji…</span></span>
@@ -107,6 +212,7 @@
         </table>
         <div class="empty" id="empty" style="display: none;">Slovník je zatím prázdný — děti ještě nic nepřidaly.</div>
     </div>
+    </section>
 </div>
 
 <script>
@@ -261,12 +367,109 @@
 
     document.getElementById('refresh').addEventListener('click', load);
 
+    /* ── záložky ── */
+    function showTab(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === name));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('on', p.id === 'tab-' + name));
+        const sub = document.getElementById('tab-sub');
+        if (sub) sub.textContent = name === 'hra' ? 'živý stav rozehrané hry' : 'společný slovník výrazů';
+    }
+    document.querySelectorAll('.tab').forEach(t => {
+        t.addEventListener('click', () => showTab(t.dataset.tab));
+    });
+
+    /* ── živý stav hry (TV) ── */
+    function renderGame(st) {
+        const score = document.getElementById('g-score');
+        const word = document.getElementById('g-word');
+        const meta = document.getElementById('g-word-meta');
+        const timer = document.getElementById('g-timer');
+
+        if (!st) {
+            document.getElementById('g-team').textContent = '—';
+            document.getElementById('g-task').textContent = '—';
+            timer.textContent = '—';
+            timer.classList.remove('low');
+            document.getElementById('g-bar').style.width = '0%';
+            word.textContent = 'výraz je zakrytý';
+            word.classList.add('covered');
+            meta.textContent = '';
+            score.innerHTML = '<div class="tv-empty">Zatím se nehraje — spusť hru na tabletu nebo počítači.</div>';
+            return;
+        }
+
+        const team = (st.teams || [])[st.currentTeamIdx || 0] || null;
+        document.getElementById('g-team').textContent = team ? team.name : '—';
+        document.getElementById('g-task').textContent = st.taskName || '—';
+
+        const left = typeof st.timeLeft === 'number' ? st.timeLeft : null;
+        timer.textContent = left === null ? '—' : left + ' s';
+        timer.classList.toggle('low', left !== null && left <= 10);
+        const total = st.timeTotal || 0;
+        document.getElementById('g-bar').style.width =
+            (left !== null && total) ? Math.max(0, Math.min(100, (left / total) * 100)) + '%' : '0%';
+
+        if (st.revealed && st.word) {
+            word.textContent = st.word;
+            word.classList.remove('covered');
+            meta.textContent = (st.points ? st.points + ' b' : '') +
+                (st.authors ? ' · vymyslel tým ' + st.authors : ' · ze zabudovaného slovníku');
+        } else {
+            word.textContent = 'výraz je zakrytý';
+            word.classList.add('covered');
+            meta.textContent = 'odhalí se klepnutím na kartu ve hře';
+        }
+
+        score.innerHTML = (st.teams || []).map((tm, i) =>
+            `<div class="tv-team-card ${i === (st.currentTeamIdx || 0) ? 'active' : ''}">
+                <div class="tv-team-name">${esc(tm.name)}</div>
+                <div class="tv-team-score">${tm.score}</div>
+            </div>`).join('');
+    }
+
+    async function loadGame() {
+        const dot = document.getElementById('g-dot');
+        const status = document.getElementById('g-status');
+        const ageEl = document.getElementById('g-age');
+        try {
+            const res = await fetch('/api/stav', { cache: 'no-store' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                dot.className = 'dot bad';
+                status.textContent = data.error || ('chyba HTTP ' + res.status);
+                ageEl.textContent = '';
+                renderGame(null);
+                return;
+            }
+            if (!data.state) {
+                dot.className = 'dot';
+                status.textContent = 'čekám na hru…';
+                ageEl.textContent = '';
+                renderGame(null);
+                return;
+            }
+            const age = data.ageMs || 0;
+            dot.className = 'dot ' + (age < 20000 ? 'ok' : 'bad');
+            status.textContent = data.state.paused ? 'hra je pozastavená'
+                : (data.state.phase === 'hra' ? 'hra běží' : 'hra není spuštěná');
+            ageEl.textContent = 'stav před ' + Math.max(1, Math.round(age / 1000)) + ' s';
+            renderGame(data.state);
+        } catch (e) {
+            dot.className = 'dot bad';
+            status.textContent = 'nedostupné (bez spojení)';
+            renderGame(null);
+        }
+    }
+
     setInterval(() => {
         tick -= 1;
         if (tick <= 0) { load(); } else { document.getElementById('next').textContent = tick; }
     }, 1000);
 
     load();
+    loadGame();
+    setInterval(loadGame, 2000);
+    showTab('hra');
 </script>
 </body>
 </html>

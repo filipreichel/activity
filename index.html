@@ -537,13 +537,38 @@
         .secret-word { letter-spacing: 0.01em; }
         .timer-text { font-variant-numeric: tabular-nums; }
         .team-row input { border-radius: 0.8rem; }
+
+        /* Logo = tlačítko na QR kód (jen na úvodní obrazovce) */
+        .logo-qr { cursor: pointer; display: inline-block; transition: transform 0.2s ease, filter 0.2s ease; }
+        .logo-qr:hover { transform: scale(1.08) rotate(-4deg); filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6)); }
+        .logo-qr:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 3px; border-radius: 0.4rem; }
+
+        /* Přes celou obrazovku QR kód ke hře */
+        .qr-overlay {
+            position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+            background: rgba(3, 7, 18, 0.94); backdrop-filter: blur(6px); z-index: 999; padding: 1rem;
+        }
+        .qr-overlay.active { display: flex; }
+        .qr-card { text-align: center; animation: qrPop 0.25s ease; }
+        .qr-title { font-size: clamp(1.4rem, 3.4vw, 2.2rem); font-weight: 800; color: #e2e8f0; margin-bottom: 1rem; }
+        .qr-box {
+            background: #fff; padding: clamp(0.6rem, 2vw, 1.2rem); border-radius: 1.2rem;
+            width: min(72vmin, 540px); box-shadow: 0 30px 80px -30px rgba(56, 189, 248, 0.75);
+        }
+        .qr-box svg { width: 100%; height: auto; display: block; }
+        .qr-url { margin-top: 1rem; font-size: clamp(0.9rem, 2vw, 1.3rem); font-weight: 700; color: #7dd3fc; }
+        .qr-hint { margin-top: 0.4rem; font-size: 0.8rem; color: #94a3b8; }
+        @keyframes qrPop { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Tlačítka výsledku jsou zamčená, dokud se výraz neodhalí */
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.35); transform: none !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1><i class="fa-solid fa-shapes"></i> Aktivity pro Ypsilon</h1>
+        <h1><span id="logo-qr" class="logo-qr" role="button" tabindex="0" title="Klikni pro QR kód ke hře"><i class="fa-solid fa-shapes"></i></span> Aktivity pro Ypsilon</h1>
         <p class="subtitle">Do toho týme!</p>
     </header>
 
@@ -714,14 +739,17 @@
                 </button>
             </div>
 
-            <!-- Round Result Controls -->
+            <!-- Round Result Controls — aktivní až po odhalení výrazu -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <button class="btn btn-danger" onclick="endTurn(false)">
+                <button id="btn-miss" class="btn btn-danger" onclick="endTurn(false)" disabled>
                     <i class="fa-solid fa-xmark"></i> Neuhádnuto (0 b)
                 </button>
-                <button class="btn btn-success" onclick="endTurn(true)">
+                <button id="btn-hit" class="btn btn-success" onclick="endTurn(true)" disabled>
                     <i class="fa-solid fa-check"></i> Uhádnuto!
                 </button>
+            </div>
+            <div id="verdict-hint" style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.5rem;">
+                Tlačítka se odemknou po odhalení výrazu.
             </div>
 
             <!-- Canvas Area for Drawing (s odsazením) -->
@@ -1134,6 +1162,7 @@
         document.getElementById('setup-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
         initCanvas();
+        publishState(true);
         startTurn();
     }
 
@@ -1149,6 +1178,7 @@
         document.getElementById('word-cover').classList.remove('hidden');
         document.getElementById('swap-word-btn').style.display = 'none';
         document.getElementById('timer-toggle-btn').disabled = true;
+        setVerdictEnabled(false);
 
         // Determine Task
         if (gameConfig.taskMode === 'auto') {
@@ -1171,6 +1201,7 @@
         gameState.timeLeft = totalDuration;
         updateTimerDisplay(totalDuration, totalDuration);
         clearCanvas();
+        publishState(true);
     }
 
     function selectManualTask(task) {
@@ -1295,6 +1326,8 @@
         gameState.wordRevealed = true;
         document.getElementById('word-cover').classList.add('hidden');
         document.getElementById('timer-toggle-btn').disabled = false;
+        setVerdictEnabled(true);
+        publishState(true);
 
         if (gameConfig.allowSwap && !gameState.swappedThisTurn) {
             document.getElementById('swap-word-btn').style.display = 'inline-flex';
@@ -1322,6 +1355,8 @@
 
             gameState.timeLeft--;
             updateTimerDisplay(gameState.timeLeft, totalDuration);
+
+            publishState(false);
 
             if (gameState.timeLeft <= 10 && gameState.timeLeft > 0) {
                 playBeep(880, 'sine', 0.05);
@@ -1364,6 +1399,7 @@
     /* End Turn & Winner */
     function endTurn(isSuccess) {
         clearInterval(gameState.timerInterval);
+        setVerdictEnabled(false);
 
         if (isSuccess) {
             playSuccessSound();
@@ -1387,6 +1423,7 @@
         // Advance Team
         gameState.teamTurnCounts[gameState.currentTeamIdx]++;
         gameState.currentTeamIdx = (gameState.currentTeamIdx + 1) % gameConfig.teams.length;
+        publishState(true);
         startTurn();
     }
 
@@ -1514,14 +1551,91 @@
         closeSettingsModal();
     }
 
+    /* ── Tlačítka výsledku: odemknou se až po odhalení výrazu ── */
+    function setVerdictEnabled(on) {
+        ['btn-hit', 'btn-miss'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) b.disabled = !on;
+        });
+        const hint = document.getElementById('verdict-hint');
+        if (hint) hint.style.display = on ? 'none' : 'block';
+    }
+
+    /* ── QR kód ke hře: klik na logo, ale jen na úvodní obrazovce ── */
+    function setupIsActive() {
+        const v = document.getElementById('setup-view');
+        return !!v && v.classList.contains('active');
+    }
+    function openQr() {
+        if (!setupIsActive()) return;          // ve hře klik na logo nic nedělá
+        const o = document.getElementById('qr-overlay');
+        if (o) o.classList.add('active');
+    }
+    function closeQr() {
+        const o = document.getElementById('qr-overlay');
+        if (o) o.classList.remove('active');
+    }
+
+    /* ── Živý stav hry pro učitelský dashboard (/api/stav) ── */
+    let lastPublish = 0;
+    function publishState(force) {
+        const now = Date.now();
+        if (!force && now - lastPublish < 2000) return;
+        lastPublish = now;
+        const snap = {
+            sentAt: now,
+            phase: document.getElementById('game-view').classList.contains('active') ? 'hra' : 'priprava',
+            teams: gameConfig.teams.map((name, i) => ({ name: name, score: gameState.scores[i] || 0 })),
+            currentTeamIdx: gameState.currentTeamIdx,
+            currentTask: gameState.currentTask,
+            taskName: (TASK_META[gameState.currentTask] || {}).name || '',
+            revealed: !!gameState.wordRevealed,
+            word: gameState.wordRevealed ? gameState.currentWord.w : null,
+            authors: gameState.wordRevealed ? (gameState.currentWord.authors || null) : null,
+            points: gameState.currentWord ? gameState.currentWord.pts : null,
+            timeLeft: gameState.timeLeft,
+            timeTotal: getTaskDuration(gameState.currentTask),
+            paused: !!gameState.isPaused,
+            targetScore: gameConfig.targetScore
+        };
+        fetch('/api/stav', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: snap })
+        }).catch(() => { /* dashboard prostě uvidí starší stav */ });
+    }
+
     // Direct Boot
     getDeviceId();               // založí ID zařízení pro rozpoznání vlastních výrazů
     renderSetupTeams();
+    setVerdictEnabled(false);    // výsledková tlačítka zamčená, dokud se výraz neodhalí
+    const logoQr = document.getElementById('logo-qr');
+    if (logoQr) {
+        logoQr.addEventListener('click', openQr);
+        logoQr.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openQr(); }
+        });
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQr(); });
     refreshDictionary();         // načte společný slovník a počítadla
     // průběžná aktualizace počítadel: jen když je stránka vidět (šetří kvótu databáze)
     setInterval(() => {
         if (document.visibilityState === 'visible') refreshDictionary();
     }, 30000);
 </script>
+
+<!-- QR kód ke hře — otevírá se klikem na logo na úvodní obrazovce -->
+<div id="qr-overlay" class="qr-overlay" onclick="closeQr()">
+    <div class="qr-card">
+        <div class="qr-title">Naskenuj a hraj taky</div>
+        <div class="qr-box">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" class="segno"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#0b1220" d="M2 2.5h7m1 0h2m1 0h2m3 0h4m2 0h7m-29 1h1m5 0h1m1 0h3m1 0h1m1 0h1m2 0h2m3 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m3 0h1m2 0h3m2 0h2m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m2 0h3m2 0h1m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h3m2 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h1m2 0h2m2 0h2m1 0h2m1 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h2m2 0h1m1 0h1m1 0h2m-18 1h1m1 0h2m1 0h3m1 0h3m2 0h5m3 0h1m2 0h1m1 0h2m-29 1h2m3 0h1m2 0h4m2 0h1m1 0h1m1 0h3m1 0h3m3 0h1m-29 1h1m2 0h7m1 0h2m1 0h1m1 0h3m2 0h1m4 0h2m-27 1h2m1 0h2m1 0h1m3 0h1m1 0h1m4 0h3m3 0h1m3 0h1m-28 1h1m1 0h5m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m5 0h2m-25 1h1m1 0h2m1 0h4m2 0h4m2 0h1m2 0h1m3 0h3m-29 1h3m3 0h4m4 0h1m4 0h2m5 0h3m-28 1h1m2 0h1m4 0h1m4 0h1m8 0h2m2 0h1m-28 1h2m1 0h1m2 0h3m1 0h1m1 0h1m1 0h1m3 0h1m1 0h2m2 0h2m1 0h1m-27 1h1m1 0h1m4 0h2m2 0h2m1 0h1m4 0h2m1 0h1m1 0h3m-28 1h1m1 0h1m1 0h1m1 0h1m3 0h1m1 0h1m2 0h1m1 0h1m2 0h1m2 0h1m2 0h1m-25 1h1m1 0h1m4 0h2m1 0h1m1 0h2m1 0h3m3 0h1m2 0h1m-26 1h8m2 0h1m1 0h1m3 0h10m-19 1h1m4 0h1m2 0h1m1 0h1m1 0h1m3 0h5m-29 1h7m1 0h1m1 0h1m1 0h2m2 0h5m1 0h1m1 0h2m1 0h1m-28 1h1m5 0h1m1 0h1m1 0h3m5 0h1m1 0h1m3 0h2m2 0h1m-29 1h1m1 0h3m1 0h1m2 0h4m1 0h2m1 0h2m1 0h5m1 0h3m-29 1h1m1 0h3m1 0h1m1 0h1m2 0h2m1 0h3m2 0h3m1 0h3m2 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m1 0h3m1 0h2m1 0h1m2 0h1m1 0h1m-29 1h1m5 0h1m2 0h2m2 0h2m1 0h1m1 0h1m1 0h6m1 0h1m-28 1h7m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m1 0h1m3 0h1"/></svg>
+        </div>
+        <div class="qr-url">activity-gamma-beige.vercel.app</div>
+        <div class="qr-hint">Klepnutím kamkoliv zavřeš</div>
+    </div>
+</div>
+
+
 </body>
 </html>
