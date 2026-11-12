@@ -18,6 +18,30 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 | `api/slovnik.js` | Vercel Serverless Function: `GET` = seznam výrazů + počty, `POST` = zápis nového výrazu |
 | `package.json` | jen `engines` + skripty, **žádné závislosti** (Redis se volá přes REST) |
 | `vercel.json` | `outputDirectory: "."` (statický web v kořeni) + `maxDuration` pro funkci |
+| `perlicky/` | druhá hra na stejné doméně: **Perličky češtiny** (týmový kvíz, `/perlicky/`) — viz níže |
+
+## Perličky češtiny (`/perlicky/`)
+
+Týmový kvíz o českém jazyce převedený z prezentace `PERLIČKY ČEŠTINY.ppsx`
+(5 kategorií × 5 otázek, bodování v tisících, krádeže otázek, střídání hráčů).
+Čistě statické, bez API a bez databáze, stav hry v `localStorage`.
+
+| Soubor | Co je uvnitř |
+|---|---|
+| `perlicky/index.html` | kostra stránky |
+| `perlicky/styles.css` | vzhled (navazuje na původní prezentaci — světlý podklad, ploché barvy) |
+| `perlicky/data.js` | všech 25 otázek, varianty, správné odpovědi a vysvětlení |
+| `perlicky/app.js` | herní logika: týmy, střídání hráčů, krádeže, body, ukládání |
+| `perlicky/img/` | ilustrace vytáhnuté z prezentace |
+| `perlicky/__test.html` | regresní test (43 kontrol) — **nevydává se**, viz `.vercelignore` |
+
+Regresní test se pouští v prohlížeči proti lokálnímu serveru:
+
+```bash
+cd perlicky && python3 -m http.server 8765 --bind 127.0.0.1 &
+google-chrome --headless=new --virtual-time-budget=10000 --dump-dom \
+  http://127.0.0.1:8765/__test.html | grep -o '<title>[^<]*</title>'   # → PASS-43
+```
 
 ## Nasazení
 
