@@ -16,8 +16,9 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 |---|---|
 | `index.html` | hra — styly, rozhraní, herní logika i volání API (jeden soubor, žádný build) |
 | `pridat.html` | samostatná stránka pro vkládání výrazů (jména, výraz, disciplíny, obtížnost) + seznam vlastních výrazů s úpravou |
-| `prehled-7c4a91.html` | pohled do databáze pro učitele — žebříček týmů + tabulka výrazů, samoobnova; **neveřejná adresa, nikam na ni neodkazovat** (`robots.txt` + `noindex`) |
+| `prehled-7c4a91.html` | **dashboard pro učitele** — záložka Hra (živý stav na TV) + záložka Slovník (žebříček a tabulka); **neveřejná adresa, nikam na ni neodkazovat** (`robots.txt` + `noindex`) |
 | `api/slovnik.js` | Vercel Serverless Function: `GET` seznam, `POST` nový výraz, `PATCH` úprava vlastního |
+| `api/stav.js` | živý stav rozehrané hry (`POST` snapshot z tabletu, `GET` pro dashboard, TTL 6 h) |
 | `package.json` | jen `engines` + skripty, **žádné závislosti** (Redis se volá přes REST) |
 | `vercel.json` | `outputDirectory: "."` (statický web v kořeni) + `maxDuration` pro funkci |
 | `perlicky/` | druhá hra na stejné doméně: **Perličky češtiny** (týmový kvíz, `/perlicky/`) — viz níže |
@@ -92,3 +93,16 @@ curl -s "https://activity-gamma-beige.vercel.app/api/slovnik" | head -c 200
 
 První musí vrátit `web: 200`; druhý buď `{"ok":true,"counts":{...}}` (databáze připojená),
 nebo `{"ok":false,"error":"Společný slovník není připojený…"}` (hra jede ze zabudovaného slovníku).
+
+## Živý stav hry
+
+Hra po každé změně (start kola, odhalení, konec kola, tik časomíry) posílá snapshot na
+`POST /api/stav` — pole `teams`, `currentTeamIdx`, `taskName`, `timeLeft`, `revealed`,
+`word` (jen po odhalení, aby ho neviděla celá třída), `points`, `authors`, `paused`.
+Dashboard ho čte každé 2 s. Když je stav starší než 20 s, hlásí, že hra neběží.
+
+## Obrazovka hry
+
+- Výsledková tlačítka (Uhádnuto / Neuhádnuto) jsou **zamčená, dokud se výraz neodhalí**.
+- Klik na logo (jen na úvodní obrazovce) otevírá přes celou obrazovku **QR kód** ke hře;
+  ve hře klik na logo nic nedělá.

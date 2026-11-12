@@ -753,3 +753,66 @@ label.field {
 @media print {
   body::before, .foot-actions, .board-foot { display: none; }
 }
+
+/* ---------------- osm týmů ---------------- */
+
+.scoreboard.many .team-chip { min-width: 118px; padding: 6px 10px; gap: 8px; }
+.scoreboard.many .team-chip .name { font-size: clamp(12px, 1vw, 15px); max-width: 13ch; }
+.scoreboard.many .team-chip .score { font-size: clamp(13px, 1.1vw, 16px); }
+
+.team-chip .score.neg { color: var(--bad); }
+
+.tile .owner.pen { color: var(--bad); }
+
+/* ---------------- pro tebe (řídicí panel) ---------------- */
+
+.teacher {
+  margin-top: clamp(12px, 1.4vw, 18px);
+  background: #f3f8f4;
+  border: 1px solid #cfe4d6;
+  border-left: 5px solid var(--good);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.teacher .t-label {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #2b7a52;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.teacher .t-answer {
+  font-size: clamp(16px, 1.6vw, 24px);
+  font-weight: 800;
+  color: #10603a;
+}
+.teacher .t-explain {
+  margin-top: 6px;
+  font-size: clamp(13px, 1.15vw, 16px);
+  color: #39463e;
+  line-height: 1.5;
+  max-width: 90ch;
+}
+
+/* ---------------- projekce (druhé okno) ---------------- */
+
+.display-mode .wrap { max-width: 1780px; padding: clamp(16px, 2vw, 34px); }
+.display-mode .qtext { font-size: clamp(24px, 3vw, 54px); }
+.display-mode .options li { font-size: clamp(19px, 2.2vw, 34px); }
+.display-mode .board .tile { font-size: clamp(18px, 2.3vw, 40px); }
+.display-mode .cat-head { font-size: clamp(12px, 1.2vw, 19px); }
+.display-mode .timer { font-size: clamp(20px, 2vw, 30px); }
+.display-mode .timer svg { width: 60px; height: 60px; }
+.display-mode .turnbox .who { font-size: clamp(18px, 2vw, 28px); }
+.display-mode .answer-line { font-size: clamp(26px, 3.4vw, 52px); }
+.display-mode .explain { font-size: clamp(16px, 1.7vw, 26px); }
+.display-mode .options.compact li { font-size: clamp(15px, 1.5vw, 24px); }
+.display-mode .rank-row .nm { font-size: clamp(18px, 2vw, 26px); }
+.display-mode .rank-row .pts { font-size: clamp(18px, 2vw, 30px); }
+.display-mode .team-chip .name { max-width: 18ch; }
+.display-mode .award { font-size: clamp(16px, 1.6vw, 24px); }
+
+.waiting .card { max-width: 620px; }
+
+.award.lose { background: #fdecea; color: #8f1f0c; }
