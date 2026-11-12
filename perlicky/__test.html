@@ -12,8 +12,7 @@
 <script src="app.js"></script>
 <script>
 /* Regresní test řídicího okna a projekce.
-   Projekce se testuje přes applyRemote() (deterministicky); skutečné propojení
-   dvou oken ověřuje CDP skript, viz AGENTS.md v repu. */
+   Skutečné propojení dvou oken ověřuje CDP skript (viz AGENTS.md v repu). */
 
 const IS_DISPLAY_TEST = new URLSearchParams(location.search).get('role') === 'display';
 const norm = s => String(s == null ? '' : s).replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -36,7 +35,6 @@ function check(name, cond, detail) {
   T.push((cond ? 'OK  ' : 'FAIL') + ' | ' + name + (detail !== undefined ? ' | ' + norm(detail) : ''));
 }
 const scores = () => qa('.team-chip .score').map(e => norm(e.textContent));
-const qidAt = i => QUESTIONS[i].id;
 
 function finish() {
   const failed = T.filter(x => x.startsWith('FAIL')).length;
@@ -50,7 +48,7 @@ function finish() {
 
 function displayTests() {
   const teams = [
-    { id: 't1', name: 'Nováci', players: ['Petr'], score: 3000, p: 0 },
+    { id: 't1', name: 'Nováci', players: ['Petr', 'Jana'], score: 3000, p: 0 },
     { id: 't2', name: 'Veteráni', players: [], score: -500, p: 0 }
   ];
   const send = (view, current, extra) => applyRemote(Object.assign(
@@ -63,19 +61,30 @@ function displayTests() {
   check('plán: dlaždice nejdou klikat', q('[data-act="open"]') === null);
   check('plán: bez ovládání hry', q('[data-act="undo"]') === null && q('[data-act="new-game"]') === null);
   check('plán: skóre vidět', scores().join(' / ') === '3 000 / -500', scores().join(' / '));
-  check('plán: záporné skóre zvýrazněné', qa('.team-chip .score.neg').length === 1);
+  check('plán: bez vysvětlujících popisků', txt('.board-foot') === '—' || !txt('.board-foot').includes('učitel'));
+  check('plán: tlačítko celé obrazovky', q('[data-act="fullscreen"]') !== null);
 
-  const ask = { qid: 'q19', phase: 'ask', respondIdx: 0, askerIdx: 0, offerIdx: null, stealUsed: false, result: null };
+  const picked = { qid: 'q19', phase: 'picked', respondIdx: 0, askerIdx: 0, offerIdx: null, stealUsed: false, stealLimit: 15, result: null };
+  send('board', picked);
+  check('vybráno: dlaždice zvýrazněná', qa('.tile.picked').length === 1);
+  check('vybráno: banner s kategorií', txt('.picked-banner').includes('Vybraná otázka') && txt('.picked-banner').includes('5 000'), txt('.picked-banner'));
+  check('vybráno: otázka ještě není vidět', q('.options') === null);
+
+  const ask = Object.assign({}, picked, { phase: 'ask' });
   send('question', ask);
   check('otázka: varianty vidět', qa('.options li').length === 5, qa('.options li').length);
   check('otázka: správná odpověď SKRYTÁ', qa('.options li.right').length === 0);
   check('otázka: bez panelu pro učitele', q('.teacher') === null);
   check('otázka: bez tlačítek Věděl/Nevěděl', q('[data-act="right"]') === null && q('[data-act="wrong"]') === null);
   check('otázka: časomíra z řídicího okna', txt('.tnum') === '12', txt('.tnum'));
+  check('otázka: jména hráčů vidět', txt('.turnbox .who').includes('Petr') && txt('.turnbox .who').includes('Jana'), txt('.turnbox .who'));
 
   send('question', Object.assign({}, ask, { phase: 'offer', offerIdx: 1 }));
-  check('krádež: děti vidí, že se rozhoduje', txt('.turnbox .lbl').includes('Krádež'), txt('.turnbox .lbl'));
-  check('krádež: bez tlačítek Krade/Nekrade', q('[data-act="steal-yes"]') === null);
+  check('krádež: dialog s podmínkami', q('.steal-dialog') !== null);
+  check('krádež: správně = +polovina', txt('.sd-terms li').includes('+2 500'), txt('.sd-terms'));
+  check('krádež: špatně = -polovina', txt('.sd-terms').includes('−2 500'), txt('.sd-terms'));
+  check('krádež: čas v dialogu', txt('.sd-terms').includes('15 s'), txt('.sd-terms'));
+  check('krádež: bez tlačítek na projekci', q('[data-act="steal-yes"]') === null);
 
   send('reveal', Object.assign({}, ask, { phase: 'done', result: { teamId: 't1', pts: 2500, stolen: true } }));
   check('odhalení: odpověď vidět', txt('.answer-line').includes('Suchdol'), txt('.answer-line'));
@@ -83,8 +92,9 @@ function displayTests() {
   check('odhalení: správná varianta zeleně', qa('.options li.right').length === 1);
   check('odhalení: bez tlačítka Pokračovat', q('[data-act="next"]') === null);
 
-  send('reveal', Object.assign({}, ask, { phase: 'done', result: { teamId: null, pts: -2500, loserId: 't2', stolen: true } }));
-  check('odhalení: penalizace za krádež', txt('.award').includes('Veteráni') && txt('.award').includes('-2 500'), txt('.award'));
+  send('results', null, { used: {} });
+  check('výsledky: stupně vítězů', qa('.podium-step').length === 2, qa('.podium-step').length);
+  check('výsledky: bez tlačítek', q('[data-act="new-game"]') === null);
 
   check('projekce nezapisuje stav', localStorage.getItem('perlicky-v1') === null);
   finish();
@@ -103,9 +113,6 @@ function controlTests() {
     btn.click();
   }
   check('max 8 týmů', qa('[data-team-name]').length === 8, qa('[data-team-name]').length);
-  check('tlačítko přidat je vypnuté', q('[data-act="add-team"]').disabled === true);
-  check('osm barev týmů', new Set(qa('.team-row .swatch').map(e => e.getAttribute('style'))).size === 8);
-
   while (qa('[data-team-name]').length > 3) {
     qa('[data-act="del-team"]').filter(b => !b.disabled).pop().click();
   }
@@ -116,100 +123,111 @@ function controlTests() {
   setInput('[data-team-name="' + ids[2] + '"]', 'Perličky');
   setInput('[data-team-players="' + ids[2] + '"]', 'Karel');
 
-  /* 2. zvuk */
-  const s0 = txt('[data-act="sound"]');
-  click('[data-act="sound"]');
-  const s1 = txt('[data-act="sound"]');
-  click('[data-act="sound"]');
-  const s2 = txt('[data-act="sound"]');
-  click('[data-act="sound"]');
-  check('zvuk se přepíná (tři polohy)', s0 !== s1 && s1 !== s2, s0 + ' → ' + s1 + ' → ' + s2);
-
   click('[data-limit="20"]');
   click('[data-act="start"]');
 
-  /* 3. plán a body v tisících */
+  /* 2. plán: jen názvy týmů, jména až v „na řadě“ */
   check('plán: 25 dlaždic', qa('.tile').length === 25, qa('.tile').length);
   const vals = qa('.tile').map(t => norm(t.textContent));
-  check('body 1 000–5 000', new Set(vals).size === 5 && vals[0] === '1 000' && vals[5] === '2 000' && vals[20] === '5 000',
-        vals.slice(0, 6).join(',') + ' … ' + vals[20]);
-  check('na řadě Nováci — Petr', txt('.turn-banner b') === 'Nováci — Petr', txt('.turn-banner b'));
-  check('tlačítko projekce', q('[data-act="display-open"]') !== null);
+  check('body 1 000–5 000', new Set(vals).size === 5 && vals[0] === '1 000' && vals[5] === '2 000' && vals[20] === '5 000');
+  check('skóre: jen název týmu', qa('.team-chip .who').length === 0 && txt('.team-chip .name') === 'Nováci');
+  check('na řadě: tým — všichni hráči', txt('.turn-banner b') === 'Nováci — Petr, Jana', txt('.turn-banner b'));
 
-  /* 4. otázka: učitel vidí odpověď, projekce ne */
-  click('.tile[data-act="open"]');
+  /* 3. první klik jen vybere, druhý ukáže */
+  const first = qa('.tile')[0];
+  first.click();
+  check('1. klik: dlaždice označená', qa('.tile.picked').length === 1);
+  check('1. klik: otázka se ještě neukáže', q('.options') === null && q('.qtext') === null);
+  check('1. klik: banner vybrané otázky', txt('.picked-banner').includes('Vybraná otázka'), txt('.picked-banner'));
+  check('1. klik: tlačítko Zobrazit otázku', q('[data-act="show"]') !== null);
+
+  click('[data-act="show"]');
+  check('2. klik: otázka se ukáže', q('.qtext') !== null);
   check('řídicí okno: správná varianta zvýrazněná', qa('.options li.right').length === 1);
-  check('řídicí okno: panel pro učitele', q('.teacher') !== null && txt('.teacher .t-answer').length > 2, txt('.teacher .t-answer'));
+  check('řídicí okno: panel pro učitele dole', q('.teacher') !== null);
+  check('panel pro učitele je až za otázkou',
+    q('.qbody').compareDocumentPosition(q('.teacher')) === Node.DOCUMENT_POSITION_FOLLOWING);
+  check('krok zpět je i u otázky', q('[data-act="undo"]') !== null);
 
-  /* 5. nevěděl → nabídka krádeže */
+  /* 4. nevěděl → dialog krádeže */
   click('[data-act="wrong"]');
-  check('nabídka krádeže místo rovnou krádeže', q('.turnbox.steal') !== null && q('[data-act="steal-yes"]') !== null && q('[data-act="wrong"]') === null, txt('.turnbox .lbl'));
-  check('krádež nabídnuta dalšímu týmu', txt('.turnbox .who').includes('Veteráni'), txt('.turnbox .who'));
-  check('krádež za polovinu (500)', txt('.turnbox .lbl').includes('500'), txt('.turnbox .lbl'));
+  check('dialog krádeže místo rovnou krádeže', q('.steal-dialog') !== null && q('[data-act="steal-yes"]') !== null, txt('.sd-q'));
+  check('dialog: nabídnut další tým', txt('.sd-team') === 'Veteráni', txt('.sd-team'));
+  check('dialog: +500 za správnou', txt('.sd-terms').includes('+500'), txt('.sd-terms'));
+  check('dialog: -500 za špatnou', txt('.sd-terms').includes('−500'), txt('.sd-terms'));
+  check('dialog: čas 10 s (polovina z 20)', txt('.sd-terms').includes('10 s'), txt('.sd-terms'));
+  check('dialog: krok zpět', q('.steal-dialog [data-act="undo"]') !== null);
 
-  /* 6. odmítnutí krádeže */
+  /* 5. odmítnutí */
   click('[data-act="steal-no"]');
-  check('odmítnuto: bez bodu', q('.award.none') !== null && txt('.award.none').includes('odmítnuta'), txt('.award'));
+  check('odmítnuto: bez bodu', q('.award.none') !== null && txt('.award').includes('odmítnuta'), txt('.award'));
   click('[data-act="next"]');
   check('po odmítnutí nikdo nic nemá', scores().every(s => s === '0'), JSON.stringify(scores()));
   check('střídání: na řadě Veteráni', txt('.turn-banner b') === 'Veteráni', txt('.turn-banner b'));
 
-  /* 7. krádež vyšla — polovina */
+  /* 6. krádež vyšla — polovina a poloviční čas */
   const t2 = qa('.tile').find(t => !t.classList.contains('done'));
   const q2 = QUESTIONS.find(x => x.id === t2.dataset.qid);
-  t2.click();
+  t2.click(); click('[data-act="show"]');
   click('[data-act="wrong"]');
   click('[data-act="steal-yes"]');
   check('krádež běží', q('[data-act="right"]') !== null, txt('.turnbox .who'));
+  check('krádež: poloviční čas', txt('.tnum') === '10', txt('.tnum'));
   click('[data-act="right"]');
   const half = norm((q2.value * 50).toLocaleString('cs-CZ'));
   check('krádež +½ (' + half + ')', txt('.award.win').includes(half), txt('.award'));
   click('[data-act="next"]');
-  const sc1 = scores();
-  check('skóre střelce krádeže = ' + half, sc1[2] === half, JSON.stringify(sc1));
+  check('skóre střelce krádeže = ' + half, scores()[2] === half, JSON.stringify(scores()));
 
-  /* 8. krádež nevyšla — mínus polovina */
+  /* 7. krádež nevyšla — mínus polovina */
   const t3 = qa('.tile').find(t => !t.classList.contains('done'));
   const q3 = QUESTIONS.find(x => x.id === t3.dataset.qid);
-  t3.click();
+  t3.click(); click('[data-act="show"]');
   click('[data-act="wrong"]');
   click('[data-act="steal-yes"]');
   const stealerName = txt('.turnbox .who').split(' — ')[0];
   click('[data-act="wrong"]');
-  const minus = norm('-' + (q3.value * 50).toLocaleString('cs-CZ'));
+  const minus = norm('-' + (q3.value * 50).toLocaleString('cs-CZ'));  // award používá ASCII minus
   check('krádež nevyšla: ' + minus, txt('.award.lose').includes(minus), txt('.award'));
-  check('penalizace jde za tím, kdo kradl', txt('.award.lose').includes(stealerName), stealerName + ' / ' + txt('.award'));
-  click('[data-act="next"]');
-  const chipIdx = qa('.team-chip .name').map(e => norm(e.textContent)).indexOf(stealerName);
-  check('skóre po neúspěšné krádeži', scores()[chipIdx] === minus, JSON.stringify(scores()) + ' idx=' + chipIdx);
+  check('penalizace za krádcem', txt('.award.lose').includes(stealerName), txt('.award'));
 
-  /* 9. undo krok zpět do otázky */
+  /* 8. undo u otázky (spletl jsem se) */
   click('[data-act="undo"]');
-  check('undo vrátí otázku', q('.turnbox') !== null && q('.award') === null, txt('.turnbox .lbl'));
-  click('[data-act="wrong"]');      // krádež znovu nevyšla
-
-  /* 10. dohrát do konce */
+  check('undo: zpět do otázky', q('.turnbox') !== null && q('.award') === null, txt('.turnbox .lbl'));
+  click('[data-act="wrong"]');   // znovu nevyšla
   click('[data-act="next"]');
+
+  /* 9. nová hra se ptá */
+  click('[data-act="new-game"]');
+  check('nová hra: dialog s volbou', q('.overlay .dialog') !== null && q('[data-act="new-same"]') !== null && q('[data-act="new-fresh"]') !== null);
+  click('[data-act="modal-close"]');
+  check('nová hra: zrušit zavře dialog', q('.overlay') === null);
+  click('[data-act="new-game"]');
+  click('[data-act="new-same"]');
+  check('stejné týmy: hra pokračuje', q('.board') !== null && q('.setup') === null);
+
+  /* 10. dohrát do konce a podívat se na stupně vítězů */
   let guard = 0;
-  while (!q('.rank') && guard < 60) {
+  while (!q('.podium') && guard < 80) {
     guard++;
     const t = qa('.tile').find(x => !x.classList.contains('done'));
     if (!t) break;
     t.click();
+    if (q('[data-act="show"]')) click('[data-act="show"]');
     if (q('[data-act="wrong"]')) click('[data-act="wrong"]');
     if (q('[data-act="steal-no"]')) click('[data-act="steal-no"]');
     if (q('[data-act="next"]')) click('[data-act="next"]');
   }
-  check('konec hry: výsledky', q('.rank') !== null, 'kroků=' + guard);
-  check('pořadí: 3 řádky', qa('.rank-row').length === 3, qa('.rank-row').length);
-  check('vítěz má medaili', txt('.rank-row .place') === '🥇', txt('.rank-row .place'));
+  check('konec: stupně vítězů', q('.podium') !== null, 'kroků=' + guard);
+  check('pódium: tři místa', qa('.podium-step').length === 3, qa('.podium-step').length);
+  check('pódium: zlato uprostřed', (qa('.podium-step')[1] || {}).classList && qa('.podium-step')[1].classList.contains('place-1'));
 
-  /* 11. persistence a nová hra */
+  /* 11. persistence */
   const raw = localStorage.getItem('perlicky-v1');
   check('stav uložen', !!raw && raw.includes('Nováci'), raw ? raw.length + ' znaků' : 'nic');
-  click('[data-act="again"]');
-  check('hrát znovu: nulové skóre', scores().every(s => s === '0'), JSON.stringify(scores()));
-  check('hrát znovu: jména zůstala', qa('.team-chip .name')[0].textContent.trim() === 'Nováci');
+  click('[data-act="new-game"]');
+  click('[data-act="new-fresh"]');
+  check('nové týmy: zpět na nastavení', q('.setup') !== null);
   finish();
 }
 

@@ -6,9 +6,10 @@
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script>
-  // náhled stavu pro screenshoty: __demo.html?v=question&role=display
+  // náhled stavu pro screenshoty: __demo.html?v=board|picked|question|offer|reveal|results[&role=display][&q=q18]
   const p = new URLSearchParams(location.search);
   const v = p.get('v') || 'board';
+  const qid = p.get('q') || 'q18';
   const teams = [
     { id: 't1', name: 'Nováci', players: ['Petr', 'Jana', 'Lukáš'], score: 4500, p: 0 },
     { id: 't2', name: 'Veteráni', players: [], score: -500, p: 0 },
@@ -24,27 +25,37 @@
     [QUESTIONS[7].id]: { owner: null, stolen: true, penalty: 't2' },
     [QUESTIONS[14].id]: { owner: 't3', stolen: true, penalty: null }
   };
+  const phase = v === 'picked' ? 'picked' : v === 'offer' ? 'offer' : v === 'reveal' ? 'done' : 'ask';
   const cur = {
-    qid: 'q18', phase: v === 'offer' ? 'offer' : v === 'reveal' ? 'done' : 'ask',
+    qid, phase,
     respondIdx: 1, askerIdx: 1,
     offerIdx: v === 'offer' ? 2 : null,
-    stealUsed: false,
+    stealUsed: false, stealLimit: 15,
     result: v === 'reveal' ? { teamId: null, pts: -2000, loserId: 't2', stolen: true } : null
   };
+  const view = (v === 'question' || v === 'offer' || v === 'reveal') ? 'question' : v === 'picked' ? 'board' : v;
   S.teams = teams;
   S.used = used;
   S.turn = 1;
   S.limit = 30;
   S.sound = 'soft';
-  S.current = (v === 'question' || v === 'offer' || v === 'reveal') ? cur : null;
+  S.current = (view === 'board' && v !== 'picked') || v === 'results' ? null : cur;
   S.timeLeft = 18;
+
   if (ROLE === 'display') {
     document.body.classList.add('display-mode');
-    applyRemote({ teams, used, turn: 1, limit: 30, view: v === 'offer' ? 'question' : v, current: S.current, timeLeft: 18 });
+    applyRemote({ teams, used, turn: 1, limit: 30, view: v === 'reveal' ? 'reveal' : view, current: S.current, timeLeft: 18 });
   } else {
-    S.view = v === 'offer' ? 'question' : v;
+    S.view = v === 'reveal' ? 'reveal' : view;
     render();
-    if (v === 'question' || v === 'offer') { timeLeft = 18; paintTimer(); }
+    if (v === 'question' || v === 'offer' || v === 'reveal') { timeLeft = 18; paintTimer(); }
+  }
+
+  if (p.get('m')) {
+    setTimeout(() => {
+      const over = document.documentElement.scrollHeight - window.innerHeight;
+      document.title = over > 0 ? 'OVERFLOW+' + over : 'FITS ' + window.innerHeight;
+    }, 400);
   }
 </script>
 </body></html>

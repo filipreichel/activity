@@ -42,9 +42,18 @@ a bez databáze, stav hry v `localStorage`, druhé okno se synchronizuje přes
 `BroadcastChannel`.
 
 **Pravidla:** hodnota otázky 1 000–5 000 · tým na tahu neví → nic neztrácí, ale
-další tým v pořadí může **ukrást za polovinu** (500–2 500) · kdo krade a netrefí,
-o polovinu **přichází** (skóre může jít do minusu) · krádež jde jen jednou za otázku
-a nebere hráči jeho vlastní kolo · krádež lze odmítnout.
+další tým v pořadí dostane **dialog s nabídkou krádeže** za polovinu (500–2 500)
+a s **polovičním časem, nejméně 10 s** · kdo krade a netrefí, o polovinu **přichází**
+(skóre může jít do minusu) · krádež jde jen jednou za otázku, nebere hráči jeho
+vlastní kolo a lze ji odmítnout · odpovídá tým jako celek, hráči se needdají.
+
+**Průběh otázky:** 1. klik na dlaždici ji jen **označí** (děti na projekci vidí
+„Vybraná otázka“), 2. klik (tlačítko „Zobrazit otázku“ nebo dlaždice znovu) otázku
+**ukáže** a spustí odpočet. Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů
+pod nimi.
+
+**Zvuk:** tik odpočtu (posledních 10 s hlasitěji, poslední 3 s jinak), gong na nule,
+jiný tón pro správnou a pro špatnou odpověď. Přepínač 🔇/🔉/🔊.
 
 **Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
 výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).
@@ -57,9 +66,9 @@ Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejné
 | `perlicky/data.js` | všech 25 otázek, varianty, správné odpovědi a vysvětlení |
 | `perlicky/app.js` | herní logika, časomíra se zvukem, dvě okna, ukládání |
 | `perlicky/img/` | ilustrace vytáhnuté z prezentace |
-| `perlicky/__test.html` | regresní test řídicího okna (30 kontrol) a projekce (19) |
-| `perlicky/__test-sound.html` | test zvuků a gongu přes stub WebAudio (11 kontrol) |
-| `perlicky/__demo.html` | náhled stavů pro screenshoty (`?v=board|question|offer|reveal&role=display`) |
+| `perlicky/__test.html` | regresní test řídicího okna (39 kontrol) a projekce (28) |
+| `perlicky/__test-sound.html` | test zvuků, gongu a tónů odpovědí přes stub WebAudio (13 kontrol) |
+| `perlicky/__demo.html` | náhled stavů pro screenshoty (`?v=board|picked|question|offer|reveal|results&role=display&m=1`) |
 
 Testy se pouští v prohlížeči proti lokálnímu serveru (nevydávají se, hlídá je `.vercelignore`):
 

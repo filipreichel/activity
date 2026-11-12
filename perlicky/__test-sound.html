@@ -49,6 +49,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     window.__tones = []; Sfx.gong();
     check('gong: víc tónů (zvon)', window.__tones.length >= 4, JSON.stringify(window.__tones));
 
+    window.__tones = []; Sfx.correct();
+    check('správná odpověď: dva vzestupné tóny', window.__tones.length === 2 && window.__tones[1] > window.__tones[0], JSON.stringify(window.__tones));
+    window.__tones = []; Sfx.wrong();
+    check('špatná odpověď: jiný (nižší) tón', window.__tones.length === 1 && window.__tones[0] < 400, JSON.stringify(window.__tones));
+
     // hlasitost
     S.sound = 'off';
     window.__tones = []; window.__starts = 0;
@@ -66,6 +71,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     render();
     window.__tones = []; window.__starts = 0;
     openQuestion(QUESTIONS[0].id);
+    showQuestion();
     await sleep(3800);
     check('odpočet tiká', window.__starts >= 3, 'startů=' + window.__starts);
     check('gong na nule', window.__tones.some(f => f > 150 && f < 200), JSON.stringify(window.__tones.slice(-6)));

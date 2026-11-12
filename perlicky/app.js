@@ -1,8 +1,8 @@
 /* PERLIČKY ČEŠTINY — herní logika
    Dvě okna: „control" (řídicí panel učitele, zdroj pravdy) a „display" (projekce pro děti),
    propojená přes BroadcastChannel — bez serveru, bez internetu.
-   Týmy se střídají, hráči v týmu rotují. Když tým na tahu neví, další tým v pořadí může
-   otázku ukrást za polovinu; kdo krade a netrefí, o polovinu přijde. */
+   Týmy se střídají (odpovídá tým jako celek). Když tým na tahu neví, další tým v pořadí
+   může otázku ukrást za polovinu a s polovičním časem; kdo krade a netrefí, o polovinu přijde. */
 
 const ROLE = new URLSearchParams(location.search).get('role') === 'display' ? 'display' : 'control';
 const IS_DISPLAY = ROLE === 'display';
@@ -19,6 +19,7 @@ let timerHandle = null;
 let timeLeft = 0;
 let ch = null;
 let displaySigCache = '';
+let modal = null;          // 'newgame' | 'rules' | null
 
 /* ---------------- body: 10 → 1 000 … 50 → 5 000 ---------------- */
 
@@ -56,15 +57,21 @@ function esc(s) {
   ));
 }
 function remaining() { return QUESTIONS.filter(q => !S.used[q.id]).length; }
-function currentPlayer(team) {
-  if (!team || !team.players.length) return '';
-  return team.players[team.p % team.players.length];
+
+/* jména všech hráčů týmu vedle sebe (odpovídá tým dohromady) */
+function playersText(team) {
+  return team && team.players.length ? team.players.join(', ') : '';
 }
 function turnText(i) {
   const t = S.teams[i];
   if (!t) return '';
-  const pl = currentPlayer(t);
+  const pl = playersText(t);
   return pl ? `${t.name} — ${pl}` : t.name;
+}
+function teamLabel(i) {
+  const t = S.teams[i];
+  if (!t) return '';
+  return playersText(t) ? `${t.name} — ${playersText(t)}` : t.name;
 }
 
 /* ---------------- ukládání ---------------- */
@@ -116,11 +123,11 @@ const Sfx = (function () {
     return S.sound === 'loud' ? 1 : 0.45;
   }
 
-  function blip(freq, dur, gain, type) {
+  function blip(freq, dur, gain, type, delay) {
     const c = ac(); if (!c) return;
     const vol = level() * gain;
     if (vol <= 0) return;
-    const t = c.currentTime;
+    const t = c.currentTime + (delay || 0);
     const g = c.createGain();
     const o = c.createOscillator();
     o.type = type || 'sine';
@@ -133,11 +140,33 @@ const Sfx = (function () {
     o.stop(t + dur + 0.02);
   }
 
+  function sweep(from, to, dur, gain, type) {
+    const c = ac(); if (!c) return;
+    const vol = level() * gain;
+    if (vol <= 0) return;
+    const t = c.currentTime;
+    const g = c.createGain();
+    const o = c.createOscillator();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(from, t);
+    o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t);
+    o.stop(t + dur + 0.03);
+  }
+
   return {
     unlock() { ac(); },
-    tick() { blip(880, 0.035, 0.14, 'sine'); },          // tichý tik každou sekundu
-    tickUrgent() { blip(1320, 0.07, 0.36, 'triangle'); }, // posledních 10 s
-    tickFinal() { blip(1760, 0.05, 0.42, 'square'); },    // poslední 3 s
+    tick() { blip(880, 0.035, 0.14, 'sine'); },            // tichý tik každou sekundu
+    tickUrgent() { blip(1320, 0.07, 0.36, 'triangle'); },  // posledních 10 s
+    tickFinal() { blip(1760, 0.05, 0.42, 'square'); },     // poslední 3 s
+    /* správná odpověď — vzestupné dva tóny */
+    correct() { blip(660, 0.14, 0.5, 'sine'); blip(990, 0.26, 0.5, 'sine', 0.13); },
+    /* špatná odpověď — sestupné bručení */
+    wrong() { sweep(240, 130, 0.42, 0.5, 'triangle'); },
     gong() {
       const c = ac(); if (!c) return;
       const vol = level(); if (vol <= 0) return;
@@ -162,17 +191,28 @@ const Sfx = (function () {
 
 /* ---------------- časomíra ---------------- */
 
+function currentLimit() {
+  const cur = S.current;
+  if (cur && cur.phase === 'steal' && typeof cur.stealLimit === 'number') return cur.stealLimit;
+  return S.limit;
+}
+function stealLimitFor() {
+  if (!S.limit) return 0;
+  return Math.max(10, Math.round(S.limit / 2));
+}
+
 function stopTimer() {
   if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
 }
 
 function startTimer() {
   stopTimer();
-  timeLeft = S.limit;
+  const lim = currentLimit();
+  timeLeft = lim;
   S.timeLeft = timeLeft;
   paintTimer();
   broadcast();
-  if (!S.limit) return;
+  if (!lim) return;
   timerHandle = setInterval(() => {
     timeLeft -= 1;
     S.timeLeft = Math.max(0, timeLeft);
@@ -192,13 +232,14 @@ function startTimer() {
 
 function shownSeconds() {
   if (!IS_DISPLAY) return Math.max(0, timeLeft);
-  return S.timeLeft == null ? S.limit : Math.max(0, S.timeLeft);
+  return S.timeLeft == null ? currentLimit() : Math.max(0, S.timeLeft);
 }
 
 function paintTimer() {
   const box = document.querySelector('.timer');
   if (!box) return;
-  if (!S.limit) { box.style.display = 'none'; return; }
+  const lim = currentLimit();
+  if (!lim) { box.style.display = 'none'; return; }
   const secs = shownSeconds();
   const num = box.querySelector('.tnum');
   if (num) num.textContent = secs;
@@ -206,21 +247,22 @@ function paintTimer() {
   if (ring) {
     const C = 2 * Math.PI * 20;
     ring.setAttribute('stroke-dasharray', C.toFixed(1));
-    ring.setAttribute('stroke-dashoffset', (C * (1 - secs / S.limit)).toFixed(1));
+    ring.setAttribute('stroke-dashoffset', (C * (1 - secs / lim)).toFixed(1));
   }
   if (secs <= 5) box.classList.add('warn'); else box.classList.remove('warn');
 }
 
 function timerMarkup() {
-  if (!S.limit) return '';
-  const secs = IS_DISPLAY ? shownSeconds() : S.limit;
+  const lim = currentLimit();
+  if (!lim) return '';
+  const secs = IS_DISPLAY ? shownSeconds() : lim;
   const C = 2 * Math.PI * 20;
   return `<div class="timer ${secs <= 5 ? 'warn' : ''}">
     <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
       <circle class="ring-bg" cx="23" cy="23" r="20" fill="none" stroke-width="5"></circle>
       <circle class="ring-fg" cx="23" cy="23" r="20" fill="none" stroke-width="5"
         stroke-linecap="round" transform="rotate(-90 23 23)"
-        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - secs / S.limit)).toFixed(1)}"></circle>
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - secs / lim)).toFixed(1)}"></circle>
     </svg>
     <span class="tnum">${secs}</span>
   </div>`;
@@ -259,8 +301,8 @@ function applyRemote(st) {
   const sig = JSON.stringify([
     S.view,
     S.current && S.current.qid, S.current && S.current.phase, S.current && S.current.respondIdx,
-    S.current && S.current.offerIdx, S.current && S.current.result,
-    S.teams.map(t => [t.name, t.score, t.players.join('|'), t.p]),
+    S.current && S.current.offerIdx, S.current && S.current.result, S.current && S.current.stealLimit,
+    S.teams.map(t => [t.name, t.score, t.players.join('|')]),
     S.used, S.limit
   ]);
   if (sig !== displaySigCache) {
@@ -286,26 +328,33 @@ function broadcast() {
 
 function openQuestion(qid) {
   if (S.used[qid]) return;
-  snapshot('otevření otázky');
-  S.current = { qid, phase: 'ask', respondIdx: S.turn, askerIdx: S.turn, offerIdx: null, stealUsed: false, result: null };
+  snapshot('vybrání otázky');
+  S.current = {
+    qid, phase: 'picked', respondIdx: S.turn, askerIdx: S.turn,
+    offerIdx: null, stealUsed: false, stealLimit: stealLimitFor(), result: null
+  };
+  S.view = 'board';
+  render();
+}
+
+function showQuestion() {
+  const cur = S.current;
+  if (!cur || cur.phase !== 'picked') return;
+  snapshot('zobrazení otázky');
+  cur.phase = 'ask';
   S.view = 'question';
   render();
   startTimer();
 }
 
-function advancePlayer(team) {
-  if (team && team.players.length > 1) team.p = (team.p + 1) % team.players.length;
-}
-
 function judge(ok) {
   const cur = S.current;
-  if (!cur || cur.phase === 'done' || cur.phase === 'offer') return;
+  if (!cur || cur.phase === 'done' || cur.phase === 'offer' || cur.phase === 'picked') return;
   snapshot(ok ? 'správná odpověď' : 'chybná odpověď');
 
   const q = qById(cur.qid);
   const responder = S.teams[cur.respondIdx];
   const wasSteal = cur.phase === 'steal';
-  advancePlayer(responder);
 
   if (ok) {
     const pts = wasSteal ? halfPoints(q) : points(q);
@@ -315,12 +364,14 @@ function judge(ok) {
     S.used[q.id] = { owner: responder.id, stolen: wasSteal, penalty: null };
     S.view = 'reveal';
     stopTimer();
+    Sfx.correct();
     save(); render();
     return;
   }
 
+  Sfx.wrong();
+
   if (wasSteal) {
-    // krádež nevyšla — tým o polovinu přichází
     const pts = halfPoints(q);
     responder.score -= pts;
     cur.result = { teamId: null, pts: -pts, loserId: responder.id, stolen: true };
@@ -332,10 +383,10 @@ function judge(ok) {
     return;
   }
 
-  // tým na tahu neví → nabídka krádeže dalšímu týmu v pořadí (jen jednou za otázku)
   if (S.teams.length > 1 && !cur.stealUsed) {
     cur.phase = 'offer';
     cur.offerIdx = (cur.askerIdx + 1) % S.teams.length;
+    cur.stealLimit = stealLimitFor();
     stopTimer();
     save(); render();
     return;
@@ -396,12 +447,11 @@ function undo(silent) {
   S.view = st.view;
   stopTimer();
   save(); render();
-  if (S.view === 'question' && S.current) startTimer();
+  if (S.view === 'question' && S.current && S.current.phase !== 'picked') startTimer();
 }
 
 function newGame(sameTeams) {
   stopTimer();
-  if (!sameTeams && !confirm('Začít novou hru a smazat postup?')) return;
   const teams = sameTeams ? S.teams.map(t => ({ ...t, score: 0, p: 0 })) : newState().teams;
   const limit = S.limit, sound = S.sound;
   S = newState();
@@ -409,6 +459,8 @@ function newGame(sameTeams) {
   S.limit = limit;
   S.sound = sound;
   S.view = sameTeams ? 'board' : 'setup';
+  S.turn = 0;
+  modal = null;
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   render();
 }
@@ -424,6 +476,7 @@ function render() {
   else if (v === 'question') app.innerHTML = viewQuestion();
   else if (v === 'reveal') app.innerHTML = viewReveal();
   else if (v === 'results') app.innerHTML = viewResults();
+  app.innerHTML += viewModal();
   window.scrollTo(0, 0);
   save(); broadcast();
 }
@@ -435,6 +488,7 @@ function renderDisplay() {
   else if (v === 'reveal') app.innerHTML = viewReveal(true);
   else if (v === 'results') app.innerHTML = viewResults(true);
   else app.innerHTML = viewWaiting();
+  app.innerHTML += `<button class="fs-btn" data-act="fullscreen" title="Celá obrazovka">⛶</button>`;
   window.scrollTo(0, 0);
 }
 
@@ -447,10 +501,27 @@ function viewWaiting() {
     </div>
     <div class="card">
       <h2>Co udělat</h2>
-      <p class="hint">Okno přetáhněte na druhou obrazovku, klikněte na celou obrazovku a pak už na nic nesahejte. Hra běží v řídicím okně.</p>
-      <button class="primary" data-act="fullscreen">⛶ Celá obrazovka</button>
+      <p class="hint">Klikněte na tlačítko vpravo dole — okno se roztáhne na celou obrazovku. Pak už na nic nesahejte, hra běží v řídicím okně.</p>
     </div>
   </div>`;
+}
+
+function viewModal() {
+  if (modal === 'newgame') {
+    return `
+    <div class="overlay">
+      <div class="dialog">
+        <h2>Nová hra</h2>
+        <p>Chceš hrát znovu se stejnými týmy, nebo začít s novými?</p>
+        <div class="dialog-actions">
+          <button class="primary big" data-act="new-same">Stejné týmy, nulové skóre</button>
+          <button class="big" data-act="new-fresh">Nové týmy</button>
+          <button class="ghost" data-act="modal-close">Zrušit</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  return '';
 }
 
 /* --- nastavení --- */
@@ -476,7 +547,7 @@ function viewSetup() {
 
     <div class="card">
       <h2>Týmy</h2>
-      <p class="hint">2 až 8 týmů. Když vypíšete hráče, budou se v týmu postupně střídat.</p>
+      <p class="hint">2 až 8 týmů. Hráči se vypisují pro přehled — odpovídá tým dohromady.</p>
       ${rows}
       <div class="row-actions">
         <button data-act="add-team" ${S.teams.length >= 8 ? 'disabled' : ''}>+ Přidat tým</button>
@@ -486,7 +557,7 @@ function viewSetup() {
 
     <div class="card">
       <h2>Čas na odpověď</h2>
-      <p class="hint">Odpočet tiká u otázky, posledních 10 s hlasitěji, na nule gong. Po vypršení se nic samo nevyhodnotí.</p>
+      <p class="hint">Odpočet tiká u otázky, posledních 10 s hlasitěji, na nule gong. Krádež má poloviční čas, nejméně 10 s.</p>
       <div class="seg" data-act="limit">
         ${[20, 30, 45, 60, 0].map(n => `<button data-limit="${n}" class="${S.limit === n ? 'on' : ''}">${n ? n + ' s' : 'bez časomíry'}</button>`).join('')}
       </div>
@@ -505,6 +576,8 @@ function viewSetup() {
 /* --- hrací plán --- */
 
 function viewBoard(disp) {
+  const cur = S.current;
+  const pickedQid = cur && cur.phase === 'picked' ? cur.qid : null;
   const heads = CATEGORIES.map(c => `<div class="cat-head" style="--c:${c.color}">${esc(c.name)}</div>`).join('');
 
   let tiles = '';
@@ -526,6 +599,10 @@ function viewBoard(disp) {
         tiles += `<button class="tile done ${u.stolen ? 'stolen' : ''}" disabled>
           <span class="val">${fmt(points(q))}</span>${label}
         </button>`;
+      } else if (q.id === pickedQid) {
+        tiles += `<button class="tile picked" ${disp ? 'disabled' : 'data-act="show"'} data-qid="${q.id}">
+          <span class="val">${fmt(points(q))}</span><span class="pick-tag">vybráno</span>
+        </button>`;
       } else {
         tiles += `<button class="tile" ${disp ? 'disabled' : `data-act="open" data-qid="${q.id}"`}>${fmt(points(q))}</button>`;
       }
@@ -534,14 +611,24 @@ function viewBoard(disp) {
 
   const chips = S.teams.map((t, i) => `
     <div class="team-chip ${i === S.turn ? 'active' : ''}" style="--c:${teamColor(i)}">
-      <div>
-        <div class="name">${esc(t.name)}</div>
-        ${t.players.length ? `<div class="who">${esc(currentPlayer(t))}</div>` : ''}
-      </div>
+      <div class="name">${esc(t.name)}</div>
       <div class="score ${t.score < 0 ? 'neg' : ''}">${fmt(t.score)}</div>
     </div>`).join('');
 
+  const pickedQ = pickedQid ? qById(pickedQid) : null;
+  const banner = pickedQ
+    ? `<div class="turn-banner picked-banner" style="--c:${catById(pickedQ.cat).color}">
+         <span class="k">Vybraná otázka</span>
+         <b>${esc(catById(pickedQ.cat).name)} · ${fmt(points(pickedQ))}</b>
+         <span class="k" style="margin-left:auto">${disp ? 'učitel teď otázku ukáže' : 'klikni na dlaždici znovu'}</span>
+       </div>`
+    : `<div class="turn-banner">
+         <span class="k">Na řadě</span><b>${esc(turnText(S.turn))}</b>
+         <span class="k" style="margin-left:auto">Zbývá ${remaining()} z ${QUESTIONS.length}</span>
+       </div>`;
+
   const bar = disp ? '' : `
+      ${pickedQ ? '<button class="primary" data-act="show">Zobrazit otázku →</button>' : ''}
       <button class="ghost" data-act="display-open" title="Otevřít druhé okno na projektor">🖥️ Projekce</button>
       <button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${S.sound === 'off' ? '🔇' : S.sound === 'loud' ? '🔊' : '🔉'}</button>
       <button class="ghost" data-act="undo" title="Vrátit poslední krok">↶ Zpět</button>
@@ -557,17 +644,13 @@ function viewBoard(disp) {
     </div>
 
     <div class="scoreboard ${S.teams.length > 5 ? 'many' : ''}">${chips}</div>
-    <div class="turn-banner">
-      <span class="k">Na řadě</span><b>${esc(turnText(S.turn))}</b>
-      <span class="k" style="margin-left:auto">Zbývá ${remaining()} z ${QUESTIONS.length}</span>
-    </div>
+    ${banner}
 
     <div class="board">${heads}${tiles}</div>
 
-    <div class="board-foot">
-      <span>${disp ? 'Otázku čte a vyhodnocuje učitel.' : 'Klikněte na hodnotu a položte otázku nahlas.'}</span>
-      <span style="margin-left:auto">Body jsou v tisících · krádež za polovinu</span>
-    </div>
+    ${disp ? '' : `<div class="board-foot">
+      <span>${pickedQ ? 'Otázka je vybraná — děti ji uvidí až po tvém potvrzení.' : 'Klikněte na hodnotu a položte otázku nahlas.'}</span>
+    </div>`}
   </div>`;
 }
 
@@ -579,6 +662,7 @@ function viewQuestion(disp) {
   const c = catById(q.cat);
   const stealing = cur.phase === 'steal';
   const offering = cur.phase === 'offer';
+  const lim = currentLimit();
 
   const opts = q.options ? `<ul class="options">${q.options.map((o, i) => {
     const isRight = !disp && q.correct === i;
@@ -588,31 +672,16 @@ function viewQuestion(disp) {
 
   const img = q.img ? `<figure class="qimg"><img src="${q.img}" alt="obrázek k otázce"></figure>` : '';
 
-  let box;
-  if (offering) {
-    const ci = cur.offerIdx;
-    box = `<div class="turnbox steal" style="--c:${teamColor(ci)}">
+  const box = `<div class="turnbox ${stealing ? 'steal' : ''}" style="--c:${teamColor(cur.respondIdx)}">
       <div>
-        <div class="lbl">Krádež za ${fmt(halfPoints(q))} — rozhoduje se</div>
-        <div class="who">${esc(turnText(ci))}</div>
-      </div>
-      ${disp ? '' : `<div class="actions">
-        <button class="good" data-act="steal-yes">Krade →</button>
-        <button class="bad" data-act="steal-no">Nekrade ✕</button>
-      </div>`}
-    </div>`;
-  } else {
-    box = `<div class="turnbox ${stealing ? 'steal' : ''}" style="--c:${teamColor(cur.respondIdx)}">
-      <div>
-        <div class="lbl">${stealing ? `Krádež za ${fmt(halfPoints(q))} — odpovídá` : 'Odpovídá'}</div>
-        <div class="who">${esc(turnText(cur.respondIdx))}</div>
+        <div class="lbl">${stealing ? `Krádež za ${fmt(halfPoints(q))} · čas ${lim} s — odpovídá` : 'Odpovídá'}</div>
+        <div class="who">${esc(teamLabel(cur.respondIdx))}</div>
       </div>
       ${disp ? '' : `<div class="actions">
         <button class="good" data-act="right">✔ Věděl</button>
         <button class="bad" data-act="wrong">✘ Nevěděl</button>
       </div>`}
     </div>`;
-  }
 
   const teacher = disp ? '' : `
     <div class="teacher">
@@ -622,8 +691,9 @@ function viewQuestion(disp) {
     </div>`;
 
   const topbarRight = disp
-    ? '<button class="ghost" data-act="fullscreen" title="Celá obrazovka">⛶</button>'
+    ? ''
     : `<button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${S.sound === 'off' ? '🔇' : S.sound === 'loud' ? '🔊' : '🔉'}</button>
+       <button class="ghost" data-act="undo" title="Vrátit poslední krok">↶ Zpět</button>
        <button class="ghost" data-act="cancel">✕ Zavřít otázku</button>`;
 
   return `
@@ -642,19 +712,52 @@ function viewQuestion(disp) {
 
     ${box}
 
-    ${teacher}
-
-    <div class="qbody">
-      <p class="qtext">${esc(q.q)}</p>
+    <div class="qbody ${img ? 'split' : ''}">
+      <div class="qmain">
+        <p class="qtext">${esc(q.q)}</p>
+        ${opts}
+      </div>
       ${img}
-      ${opts}
     </div>
+
+    ${teacher}
 
     ${disp ? '' : `<div class="foot-actions">
       <span class="kbd">S</span> správně &nbsp;·&nbsp; <span class="kbd">N</span> nevěděl &nbsp;·&nbsp;
       <span class="kbd">K</span> krádež &nbsp;·&nbsp; <span class="kbd">Esc</span> zavřít
       <span data-timeout-hint style="margin-left:auto;color:var(--ink-2);font-size:13px"></span>
     </div>`}
+
+    ${offering ? stealOverlay(disp) : ''}
+  </div>`;
+}
+
+function stealOverlay(disp) {
+  const cur = S.current;
+  const q = qById(cur.qid);
+  const team = S.teams[cur.offerIdx];
+  const ci = cur.offerIdx;
+  const half = fmt(halfPoints(q));
+  const lim = cur.stealLimit || 0;
+
+  return `
+  <div class="overlay">
+    <div class="dialog steal-dialog" style="--c:${teamColor(ci)}">
+      <div class="sd-team"><span class="dotc"></span>${esc(team.name)}</div>
+      <h2>Chceš tuhle otázku ukrást?</h2>
+      <p class="sd-q">${esc(catById(q.cat).name)} · ${fmt(points(q))}</p>
+      <ul class="sd-terms">
+        <li><span class="ok">✔</span> správná odpověď <b>+${half}</b></li>
+        <li><span class="no">✘</span> špatná odpověď <b>−${half}</b></li>
+        <li><span class="cl">⏱</span> čas na odpověď <b>${lim ? lim + ' s' : 'bez časomíry'}</b></li>
+      </ul>
+      ${disp ? '<p class="sd-note">Rozhoduje tým — učitel to potvrdí v řídicím okně.</p>'
+        : `<div class="dialog-actions">
+             <button class="good big" data-act="steal-yes">Krade →</button>
+             <button class="bad big" data-act="steal-no">Nekrade ✕</button>
+             <button class="ghost" data-act="undo">↶ Zpět</button>
+           </div>`}
+    </div>
   </div>`;
 }
 
@@ -689,7 +792,7 @@ function viewReveal(disp) {
     : '';
 
   return `
-  <div class="wrap qview">
+  <div class="wrap qview reveal">
     <div class="topbar">
       <div class="brand"><span class="dot"></span>Perličky češtiny</div>
       <div class="spacer"></div>
@@ -697,13 +800,15 @@ function viewReveal(disp) {
       <span class="qval">${fmt(points(q))}</span>
     </div>
 
-    <div class="qbody">
-      ${award}
-      <p class="qtext" style="font-size:clamp(15px,1.5vw,20px);font-weight:600;color:var(--ink-2);margin-bottom:14px">${esc(q.q.split('\n')[0])}</p>
-      <div class="answer-line"><span class="tick">✔</span><span>${esc(q.answer || (q.options && q.options[q.correct]) || '')}</span></div>
-      ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}
-      ${opts}
-      ${gallery}
+    <div class="qbody ${imgs.length ? 'split' : ''}">
+      <div class="qmain">
+        ${award}
+        <p class="qtext reask">${esc(q.q.split('\n')[0])}</p>
+        <div class="answer-line"><span class="tick">✔</span><span>${esc(q.answer || (q.options && q.options[q.correct]) || '')}</span></div>
+        ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}
+        ${opts}
+      </div>
+      ${imgs.length ? `<div class="gallery-side">${gallery}</div>` : ''}
     </div>
 
     ${disp ? '' : `<div class="foot-actions">
@@ -713,19 +818,31 @@ function viewReveal(disp) {
   </div>`;
 }
 
-/* --- výsledky --- */
+/* --- výsledky se stupni vítězů --- */
 
 function viewResults(disp) {
   const sorted = S.teams.map((t, i) => ({ t, i })).sort((a, b) => b.t.score - a.t.score);
+  const top = sorted.slice(0, 3);
+  const rest = sorted.slice(3);
   const medals = ['🥇', '🥈', '🥉'];
+  const order = [1, 0, 2];  // stříbro vlevo, zlato uprostřed, bronz vpravo
 
-  const rows = sorted.map((r, rank) => `
-    <div class="rank-row ${rank === 0 ? 'first' : ''}" style="--c:${teamColor(r.i)}">
-      <span class="place">${medals[rank] || (rank + 1) + '.'}</span>
-      <div>
-        <div class="nm">${esc(r.t.name)}</div>
-        ${r.t.players.length ? `<div class="sub">${esc(r.t.players.join(', '))}</div>` : ''}
-      </div>
+  const step = (rank) => {
+    const r = top[rank];
+    if (!r) return '';
+    const h = [190, 150, 120][rank];
+    return `
+      <div class="podium-step place-${rank + 1}" style="--c:${teamColor(r.i)}">
+        <div class="pt-name">${esc(r.t.name)}</div>
+        <div class="pt-score">${fmt(r.t.score)}</div>
+        <div class="pt-block" style="height:${h}px"><span>${medals[rank]}</span><b>${rank + 1}.</b></div>
+      </div>`;
+  };
+
+  const others = rest.map((r, k) => `
+    <div class="rank-row" style="--c:${teamColor(r.i)}">
+      <span class="place">${k + 4}.</span>
+      <div class="nm">${esc(r.t.name)}</div>
       <span class="pts ${r.t.score < 0 ? 'neg' : ''}">${fmt(r.t.score)}</span>
     </div>`).join('');
 
@@ -735,15 +852,15 @@ function viewResults(disp) {
       <h1>Konec hry</h1>
       <p style="max-width:none">Odehráno ${QUESTIONS.length - remaining()} z ${QUESTIONS.length} otázek.</p>
     </div>
-    <div class="card">
-      <h2>Pořadí</h2>
-      <div class="rank">${rows}</div>
-      ${disp ? '' : `<div class="row-actions" style="margin-top:20px">
-        <button class="primary" data-act="again">Hrát znovu se stejnými týmy</button>
-        <button data-act="new-setup">Nové týmy</button>
-        ${remaining() > 0 ? '<button class="ghost" data-act="back-board">Zpět na plán</button>' : ''}
-      </div>`}
-    </div>
+
+    <div class="podium">${order.map(step).join('')}</div>
+
+    ${rest.length ? `<div class="rank">${others}</div>` : ''}
+
+    ${disp ? '' : `<div class="row-actions" style="margin-top:22px;justify-content:center">
+      <button class="primary" data-act="new-game">Nová hra</button>
+      ${remaining() > 0 ? '<button class="ghost" data-act="back-board">Zpět na plán</button>' : ''}
+    </div>`}
   </div>`;
 }
 
@@ -802,7 +919,7 @@ document.addEventListener('click', e => {
     S.turn = 0;
     S.view = 'board';
     render();
-    toast('Na řadě je ' + turnText(0));
+    toast('Na řadě je ' + S.teams[0].name);
     return;
   }
   if (act === 'display-open') {
@@ -813,6 +930,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (act === 'open') { Sfx.unlock(); openQuestion(btn.dataset.qid); return; }
+  if (act === 'show') { showQuestion(); return; }
   if (act === 'right') { judge(true); return; }
   if (act === 'wrong') { judge(false); return; }
   if (act === 'steal-yes') { offerAccept(); return; }
@@ -822,9 +940,10 @@ document.addEventListener('click', e => {
   if (act === 'undo') { undo(); return; }
   if (act === 'results') { S.view = 'results'; render(); return; }
   if (act === 'back-board') { S.view = 'board'; render(); return; }
-  if (act === 'new-game') { if (confirm('Nová hra se stejnými týmy a nulovým skóre?')) newGame(true); return; }
-  if (act === 'again') { newGame(true); return; }
-  if (act === 'new-setup') { S.view = 'setup'; render(); return; }
+  if (act === 'new-game') { modal = 'newgame'; render(); return; }
+  if (act === 'new-same') { newGame(true); return; }
+  if (act === 'new-fresh') { newGame(false); return; }
+  if (act === 'modal-close') { modal = null; render(); return; }
 });
 
 document.addEventListener('input', e => {
@@ -846,14 +965,18 @@ document.addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (IS_DISPLAY || S.view !== 'question' || !S.current) return;
-  if (e.target.tagName === 'INPUT') return;
+  if (IS_DISPLAY || e.target.tagName === 'INPUT') return;
+  if (S.view === 'board' && S.current && S.current.phase === 'picked') {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showQuestion(); }
+    return;
+  }
+  if (S.view !== 'question' || !S.current) return;
   const k = e.key.toLowerCase();
   const phase = S.current.phase;
   if (k === 's' || k === 'arrowright') { e.preventDefault(); if (phase !== 'offer') judge(true); }
   else if (k === 'n' || k === 'arrowleft') { e.preventDefault(); if (phase !== 'offer') judge(false); }
   else if (k === 'k') { e.preventDefault(); if (phase === 'offer') offerAccept(); }
-  else if (e.key === 'Escape') { e.preventDefault(); cancelQuestion(); }
+  else if (e.key === 'Escape') { e.preventDefault(); if (phase === 'offer') offerDecline(); else cancelQuestion(); }
 });
 
 window.addEventListener('beforeunload', stopTimer);
@@ -867,7 +990,6 @@ window.addEventListener('beforeunload', stopTimer);
     S.view = 'waiting';
     initChannel();
     renderDisplay();
-    // když řídicí okno mlčí (ještě není otevřené), přihlas se znovu
     setInterval(() => {
       if (document.querySelector('.waiting') && ch) { try { ch.postMessage({ type: 'hello' }); } catch (e) {} }
     }, 2500);
@@ -887,6 +1009,5 @@ window.addEventListener('beforeunload', stopTimer);
   }
   initChannel();
   render();
-  // první klik odemkne zvuk (pravidlo prohlížeče)
   document.addEventListener('click', () => Sfx.unlock(), { once: true });
 })();
