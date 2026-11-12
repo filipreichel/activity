@@ -1,0 +1,2 @@
+User-agent: *
+Disallow: /prehled-7c4a91.html

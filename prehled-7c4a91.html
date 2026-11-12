@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Přehled slovníku · Aktivity pro Ypsilon</title>
     <style>
         :root {
@@ -46,6 +47,22 @@
             font-weight: 700; font-size: 0.8rem; font-family: inherit;
         }
         button.refresh:hover { border-color: var(--blue); }
+        /* žebříček týmů */
+        .board { display: flex; flex-direction: column; gap: 0.4rem; }
+        .board-row {
+            display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: 0.6rem;
+            padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem;
+            background: rgba(15, 23, 42, 0.35);
+        }
+        .board-row.top1 { border-color: rgba(250, 204, 21, 0.55); background: rgba(250, 204, 21, 0.08); }
+        .board-row.top2 { border-color: rgba(203, 213, 225, 0.45); background: rgba(203, 213, 225, 0.06); }
+        .board-row.top3 { border-color: rgba(217, 119, 6, 0.5); background: rgba(217, 119, 6, 0.07); }
+        .rank { font-weight: 800; font-size: 1rem; text-align: center; color: var(--muted); }
+        .board-name { font-weight: 700; }
+        .board-total { font-weight: 800; color: var(--green); white-space: nowrap; }
+        .board-detail { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.25rem; font-size: 0.75rem; }
+        .board-detail span { color: var(--muted); }
+        .board-detail b { color: var(--text); }
     </style>
 </head>
 <body>
@@ -63,6 +80,14 @@
             <button class="refresh" id="refresh">Obnovit teď</button>
         </div>
         <div class="chips" id="counts"></div>
+    </div>
+
+    <div class="panel">
+        <h2 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--amber);">
+            🏆 Žebříček týmů <span class="sub" style="font-weight: 400;">— podle počtu přidaných výrazů</span>
+        </h2>
+        <div class="board" id="board"></div>
+        <div class="empty" id="board-empty" style="display: none;">Zatím žádné výrazy — žebříček se naplní, jak děti začnou přidávat.</div>
     </div>
 
     <div class="panel">
@@ -112,6 +137,40 @@
         return String(w[key] || '').toLowerCase();
     }
 
+    function renderBoard() {
+        const byTeam = new Map();
+        words.forEach(w => {
+            const name = (w.names || '—').trim() || '—';
+            const e = byTeam.get(name) || { names: name, total: 0, desc: 0, draw: 0, mime: 0, points: 0 };
+            e.total += 1;
+            w.tasks.forEach(t => {
+                e[t] += 1;
+                e.points += w.points[t] || 0;
+            });
+            byTeam.set(name, e);
+        });
+
+        const rows = [...byTeam.values()].sort((a, b) => b.total - a.total || b.points - a.points);
+        const medals = ['🥇', '🥈', '🥉'];
+
+        document.getElementById('board').innerHTML = rows.map((e, i) => `
+            <div class="board-row ${i < 3 ? 'top' + (i + 1) : ''}">
+                <div class="rank">${medals[i] || (i + 1) + '.'}</div>
+                <div>
+                    <div class="board-name">${esc(e.names)}</div>
+                    <div class="board-detail">
+                        <span>Popis <b>${e.desc}</b></span> ·
+                        <span>Kreslení <b>${e.draw}</b></span> ·
+                        <span>Pantomima <b>${e.mime}</b></span> ·
+                        <span>body celkem <b>${e.points}</b></span>
+                    </div>
+                </div>
+                <div class="board-total">${e.total} ${e.total === 1 ? 'výraz' : (e.total < 5 ? 'výrazy' : 'výrazů')}</div>
+            </div>`).join('');
+
+        document.getElementById('board-empty').style.display = rows.length ? 'none' : 'block';
+    }
+
     function render() {
         const isTask = key => key === 'desc' || key === 'draw' || key === 'mime';
         const sorted = words.slice().sort((a, b) => {
@@ -144,6 +203,8 @@
         }).join('');
 
         document.getElementById('empty').style.display = sorted.length ? 'none' : 'block';
+
+        renderBoard();
 
         document.getElementById('counts').innerHTML =
             `<span class="chip" style="color: var(--blue);">Popis <b style="color: var(--text);">${counts.desc || 0}</b></span>` +
