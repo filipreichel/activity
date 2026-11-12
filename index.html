@@ -606,7 +606,7 @@
 
             <div id="timer-unified-group" class="timer-row">
                 <span>Čas na kolo (sekundy):</span>
-                <input type="number" id="time-unified" class="timer-input" value="60" min="15" max="180">
+                <input type="number" id="time-unified" class="timer-input" value="59" min="15" max="180">
             </div>
 
             <div id="timer-split-group" style="display: none;">
@@ -705,7 +705,7 @@
                     <circle class="timer-bg" cx="50" cy="50" r="42" />
                     <circle id="timer-bar" class="timer-bar" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="0" />
                 </svg>
-                <div id="timer-display" class="timer-text">60</div>
+                <div id="timer-display" class="timer-text">59</div>
             </div>
 
             <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem;">
@@ -1056,7 +1056,7 @@
         taskMode: 'auto',
         allowSwap: true,
         timerMode: 'unified',
-        times: { unified: 60, desc: 60, draw: 90, mime: 60 }
+        times: { unified: 59, desc: 60, draw: 90, mime: 60 }
     };
 
     let gameState = {
@@ -1067,7 +1067,7 @@
         currentWord: null,
         wordRevealed: false,
         swappedThisTurn: false,
-        timeLeft: 60,
+        timeLeft: 59,
         timerInterval: null,
         isPaused: false
     };
@@ -1119,7 +1119,7 @@
     /* Start and Transition */
     function startGame() {
         // Read input times
-        gameConfig.times.unified = parseInt(document.getElementById('time-unified').value) || 60;
+        gameConfig.times.unified = parseInt(document.getElementById('time-unified').value) || 59;
         gameConfig.times.desc = parseInt(document.getElementById('time-desc').value) || 60;
         gameConfig.times.draw = parseInt(document.getElementById('time-draw').value) || 90;
         gameConfig.times.mime = parseInt(document.getElementById('time-mime').value) || 60;
@@ -1203,7 +1203,7 @@
         if (gameConfig.timerMode === 'unified') {
             return gameConfig.times.unified;
         }
-        return gameConfig.times[task] || 60;
+        return gameConfig.times[task] || 59;
     }
 
     /* ── Losování výrazu: 1) výrazy ostatních, 2) vlastní, 3) zabudovaný slovník ── */
