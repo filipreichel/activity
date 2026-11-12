@@ -1,0 +1,13 @@
+{
+  "name": "activity-pro-ypsilon",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Aktivity pro Ypsilon — hra s vlastními výrazy ve společném slovníku (Vercel + Upstash Redis).",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "echo 'staticka aplikace — zadny build krok'",
+    "dev": "vercel dev"
+  }
+}

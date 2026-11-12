@@ -543,6 +543,20 @@
             </div>
         </div>
 
+        <div class="glass-panel" style="text-align: center;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent-blue);">
+                <i class="fa-solid fa-book-open"></i> Společný slovník výrazů
+            </h2>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.85rem;">
+                Přidejte vlastní výraz — ve hře se losují přednostně výrazy ostatních týmů.
+            </p>
+            <div id="dict-counts-setup" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
+            <button class="btn btn-secondary" onclick="openDictModal()" style="width: 100%;">
+                <i class="fa-solid fa-plus"></i> Přidat výraz do slovníku
+            </button>
+            <div id="dict-status-setup" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.6rem;"></div>
+        </div>
+
         <button class="btn btn-primary" onclick="startGame()" style="font-size: 1.2rem; padding: 1.2rem;">
             <i class="fa-solid fa-play"></i> Začít hru
         </button>
@@ -588,6 +602,7 @@
                     <i class="fa-solid fa-eye" style="font-size: 2.5rem; color: var(--accent-blue);"></i>
                     <span style="font-weight: 700; font-size: 1.1rem;">Klepni pro odhalení slova</span>
                     <span style="font-size: 0.8rem; color: #94a3b8;">Odhalení ihned spustí časomíru!</span>
+                    <span id="word-authors" style="font-size: 0.85rem; color: #cbd5e1; max-width: 92%; text-align: center;"></span>
                 </div>
                 <div id="secret-word" class="secret-word">---</div>
                 <div id="secret-points" class="points-tag">3 body</div>
@@ -679,6 +694,57 @@
     </div>
 </div>
 
+<!-- Modal: vkládání výrazů do společného slovníku -->
+<div id="dict-modal" class="modal-overlay">
+    <div class="glass-panel" style="width: 100%; max-width: 460px; background: #1e293b; max-height: 92vh; overflow-y: auto;">
+        <h3 style="font-size: 1.2rem; margin-bottom: 0.35rem;"><i class="fa-solid fa-book-open"></i> Nový výraz do slovníku</h3>
+        <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 1rem;">Výraz se uloží do společné databáze a může ho dostat jiný tým.</p>
+
+        <div id="dict-counts" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
+
+        <form id="dict-form" onsubmit="submitDictEntry(event)">
+            <div class="form-group">
+                <label for="dict-names">Vaše jména</label>
+                <input type="text" id="dict-names" placeholder="Např. Kuba a Terka" maxlength="60" required>
+            </div>
+            <div class="form-group">
+                <label for="dict-text">Výraz</label>
+                <input type="text" id="dict-text" placeholder="Např. Prasklá pneumatika" maxlength="80" required>
+            </div>
+            <div class="form-group">
+                <label>Vhodnost pro disciplíny</label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="dict-task-desc" checked>
+                    <span><i class="fa-solid fa-comment" style="color: var(--accent-blue);"></i> Popis</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="dict-task-draw">
+                    <span><i class="fa-solid fa-palette" style="color: var(--accent-purple);"></i> Kreslení</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="dict-task-mime">
+                    <span><i class="fa-solid fa-person-walking" style="color: var(--accent-amber);"></i> Pantomima</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Obtížnost</label>
+                <div class="score-pill-group" id="dict-pts-group">
+                    <div class="pill-btn" onclick="setDictPts(1, this)">1 b</div>
+                    <div class="pill-btn active" onclick="setDictPts(2, this)">2 b</div>
+                    <div class="pill-btn" onclick="setDictPts(3, this)">3 b</div>
+                </div>
+            </div>
+            <div id="dict-msg" style="font-size: 0.85rem; margin-bottom: 0.75rem; min-height: 1.2rem;"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeDictModal()" style="flex: 1;">Zavřít</button>
+                <button type="submit" class="btn btn-primary" id="dict-submit" style="flex: 1;">
+                    <i class="fa-solid fa-check"></i> Uložit výraz
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     /* Web Audio Sound Synthesizer */
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -730,30 +796,260 @@
         });
     }
 
-    /* Word Database (Obecná, pestrá slova s body 1-3) */
+    /* Word Database — zabudovaný univerzální slovník
+       (použije se až po vyčerpání výrazů dětí; tasks = pro které disciplíny se hodí) */
     const WORDS_DB = [
         // 1 bod (lehčí)
-        { w: "Pes", pts: 1 }, { w: "Kolo", pts: 1 }, { w: "Kniha", pts: 1 }, { w: "Slunce", pts: 1 },
-        { w: "Kytara", pts: 1 }, { w: "Hodinový manžel", pts: 1 }, { w: "Mobilní telefon", pts: 1 },
-        { w: "Auto", pts: 1 }, { w: "Ryba", pts: 1 }, { w: "Zmrzlina", pts: 1 }, { w: "Spánek", pts: 1 },
-        { w: "Fotbal", pts: 1 }, { w: "Brýle", pts: 1 }, { w: "Kočka", pts: 1 }, { w: "Snídaně", pts: 1 },
-        { w: "Klíče", pts: 1 }, { w: "Strom", pts: 1 }, { w: "Déšť", pts: 1 }, { w: "Televize", pts: 1 },
+        { w: "Pes", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Kočka", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Kolo", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Zmrzlina", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Fotbal", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Auto", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Ryba", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Snídaně", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Slunce", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Kniha", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Brýle", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Déšť", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Strom", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Televize", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Klíče", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Budík", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Šnek", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Žirafa", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Tučňák", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Deštník", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Hodiny", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Polévka", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Kaktus", pts: 1, tasks: ['desc', 'draw'] },
+        { w: "Kominík", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Fotograf", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Kadeřník", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Myš", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Banán", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Koloběžka", pts: 1, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Včela", pts: 1, tasks: ['desc', 'draw', 'mime'] },
 
         // 2 body (střední)
-        { w: "Virtuální realita", pts: 2 }, { w: "Cestování časem", pts: 2 }, { w: "Bezdrátová sluchátka", pts: 2 },
-        { w: "Horská dráha", pts: 2 }, { w: "Potápění s žraloky", pts: 2 }, { w: "Ztracený kufr", pts: 2 },
-        { w: "Ranní budíček", pts: 2 }, { w: "Létající talíř", pts: 2 }, { w: "Nákupní horečka", pts: 2 },
-        { w: "Zubní kaz", pts: 2 }, { w: "Horkovzdušný balon", pts: 2 }, { w: "Detektiv", pts: 2 },
-        { w: "Rybářský prut", pts: 2 }, { w: "Sněhová bouře", pts: 2 }, { w: "Selfie tyč", pts: 2 },
-        { w: "Záchranný kruh", pts: 2 }, { w: "Stěhování nábytku", pts: 2 }, { w: "Zaseknutý výtah", pts: 2 },
+        { w: "Virtuální realita", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Cestování časem", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Bezdrátová sluchátka", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Horská dráha", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Potápění s žraloky", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Ztracený kufr", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Ranní budíček", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Létající talíř", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Nákupní horečka", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Zubní kaz", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Horkovzdušný balon", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Detektiv", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Rybářský prut", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Sněhová bouře", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Selfie tyč", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Záchranný kruh", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Stěhování nábytku", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Zaseknutý výtah", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Svačina ve škole", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Školní zvonek", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Prasklá pneumatika", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Rozbitá wifi", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Zkoušení u tabule", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Klouzačka", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Pokušení", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Nuda", pts: 2, tasks: ['desc', 'mime'] },
+        { w: "Sníh v červenci", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Žvýkačka", pts: 2, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Rozsvícený stromeček", pts: 2, tasks: ['desc', 'draw'] },
+        { w: "Křeček v kolečku", pts: 2, tasks: ['desc', 'draw', 'mime'] },
 
         // 3 body (obtížnější)
-        { w: "Chytré hodinky", pts: 3 }, { w: "Prokrastinace", pts: 3 }, { w: "Paralelní vesmír", pts: 3 },
-        { w: "Kocovina", pts: 3 }, { w: "Výměna pneumatiky", pts: 3 }, { w: "Fobie z pavouků", pts: 3 },
-        { w: "Noční můra", pts: 3 }, { w: "Autogramiáda", pts: 3 }, { w: "Zápas sumo", pts: 3 },
-        { w: "Povolení k pobytu", pts: 3 }, { w: "Skok padákem", pts: 3 }, { w: "Vyhoření", pts: 3 },
-        { w: "Stávka na letišti", pts: 3 }, { w: "Špatné wifi připojení", pts: 3 }
+        { w: "Chytré hodinky", pts: 3, tasks: ['desc', 'draw'] },
+        { w: "Prokrastinace", pts: 3, tasks: ['desc'] },
+        { w: "Paralelní vesmír", pts: 3, tasks: ['desc', 'draw'] },
+        { w: "Výměna pneumatiky", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Fobie z pavouků", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Noční můra", pts: 3, tasks: ['desc', 'draw'] },
+        { w: "Autogramiáda", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Zápas sumo", pts: 3, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Povolení k pobytu", pts: 3, tasks: ['desc'] },
+        { w: "Skok padákem", pts: 3, tasks: ['desc', 'draw', 'mime'] },
+        { w: "Stávka na letišti", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Špatné wifi připojení", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Bezesná noc", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Trapas", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Ztráta paměti", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Nekonečná fronta", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Rozbité srdce", pts: 3, tasks: ['desc', 'draw'] },
+        { w: "Vynálezce", pts: 3, tasks: ['desc', 'draw'] },
+        { w: "Loučení na nádraží", pts: 3, tasks: ['desc', 'mime'] },
+        { w: "Zapomenutý úkol", pts: 3, tasks: ['desc', 'mime'] }
     ];
+
+    /* ─── Společný slovník výrazů (sdílená databáze přes /api/slovnik) ─── */
+    const DICT_API = '/api/slovnik';
+    const DEVICE_KEY = 'yp_device_id';
+    const NAMES_KEY = 'yp_names';
+    const OWN_KEY = 'yp_own_ids';
+
+    let sharedWords = [];        // výrazy z databáze (cache pro losování)
+    let sharedCounts = { desc: 0, draw: 0, mime: 0, total: 0 };
+    let sharedState = 'unknown'; // 'ok' | 'offline' | 'unconfigured'
+    let sharedDetail = '';
+    let usedSharedIds = new Set();
+    let usedBuiltinKeys = new Set();
+
+    function getDeviceId() {
+        let id = localStorage.getItem(DEVICE_KEY);
+        if (!id) {
+            id = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+            localStorage.setItem(DEVICE_KEY, id);
+        }
+        return id;
+    }
+
+    function getOwnIds() {
+        try { return JSON.parse(localStorage.getItem(OWN_KEY) || '[]'); } catch (e) { return []; }
+    }
+
+    function addOwnId(id) {
+        const ids = getOwnIds();
+        if (!ids.includes(id)) {
+            ids.push(id);
+            localStorage.setItem(OWN_KEY, JSON.stringify(ids.slice(-800)));
+        }
+    }
+
+    function chipHtml(icon, label, value, color) {
+        return `<span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.35rem 0.7rem;border-radius:999px;background:rgba(148,163,184,0.12);border:1px solid rgba(148,163,184,0.25);font-size:0.85rem;font-weight:700;color:${color};">
+            <i class="fa-solid ${icon}"></i> ${label} <b style="color:#e2e8f0;">${value}</b></span>`;
+    }
+
+    function pluralVyraz(n) {
+        if (n === 1) return '1 výraz';
+        if (n >= 2 && n <= 4) return n + ' výrazy';
+        return n + ' výrazů';
+    }
+
+    function dictTotalText(n) {
+        if (!n) return '✅ Slovník je zatím prázdný.';
+        if (n === 1) return '✅ Ve společném slovníku je ' + pluralVyraz(1) + '.';
+        if (n >= 2 && n <= 4) return '✅ Ve společném slovníku jsou ' + pluralVyraz(n) + '.';
+        return '✅ Ve společném slovníku je ' + pluralVyraz(n) + '.';
+    }
+
+    function renderDictCounters() {
+        const html =
+            chipHtml('fa-comment', 'Popis', sharedCounts.desc || 0, 'var(--accent-blue)') +
+            chipHtml('fa-palette', 'Kreslení', sharedCounts.draw || 0, 'var(--accent-purple)') +
+            chipHtml('fa-person-walking', 'Pantomima', sharedCounts.mime || 0, 'var(--accent-amber)');
+        ['dict-counts', 'dict-counts-setup'].forEach(idEl => {
+            const el = document.getElementById(idEl);
+            if (el) el.innerHTML = html;
+        });
+        let status = '';
+        if (sharedState === 'unconfigured') {
+            status = '⚠️ Společný slovník zatím není připojený (' + (sharedDetail || 'chybí databáze') + ') — hra používá zabudovaný slovník.';
+        } else if (sharedState === 'offline') {
+            status = '⚠️ Společný slovník je nedostupný (' + (sharedDetail || 'bez spojení') + ') — hra používá zabudovaný slovník.';
+        } else if (sharedState === 'ok') {
+            status = dictTotalText(sharedCounts.total || 0);
+        }
+        ['dict-status', 'dict-status-setup'].forEach(idEl => {
+            const el = document.getElementById(idEl);
+            if (el) el.textContent = status;
+        });
+    }
+
+    async function refreshDictionary() {
+        try {
+            const res = await fetch(DICT_API, { cache: 'no-store' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                sharedState = res.status === 503 ? 'unconfigured' : 'offline';
+                sharedDetail = (data && (data.error || data.detail)) || ('HTTP ' + res.status);
+                sharedWords = [];
+                sharedCounts = { desc: 0, draw: 0, mime: 0, total: 0 };
+            } else {
+                sharedState = 'ok';
+                sharedDetail = '';
+                sharedWords = Array.isArray(data.words) ? data.words : [];
+                sharedCounts = data.counts || { desc: 0, draw: 0, mime: 0, total: sharedWords.length };
+            }
+        } catch (e) {
+            sharedState = 'offline';
+            sharedDetail = 'bez spojení';
+            sharedWords = [];
+            sharedCounts = { desc: 0, draw: 0, mime: 0, total: 0 };
+        }
+        renderDictCounters();
+        return sharedState;
+    }
+
+    function openDictModal() {
+        document.getElementById('dict-names').value = localStorage.getItem(NAMES_KEY) || '';
+        document.getElementById('dict-msg').textContent = '';
+        document.getElementById('dict-modal').classList.add('active');
+        renderDictCounters();
+        refreshDictionary();
+    }
+
+    function closeDictModal() {
+        document.getElementById('dict-modal').classList.remove('active');
+    }
+
+    let dictPts = 2;
+    function setDictPts(value, el) {
+        dictPts = value;
+        document.querySelectorAll('#dict-pts-group .pill-btn').forEach(b => b.classList.remove('active'));
+        if (el) el.classList.add('active');
+    }
+
+    async function submitDictEntry(ev) {
+        ev.preventDefault();
+        const msg = document.getElementById('dict-msg');
+        const names = document.getElementById('dict-names').value.trim();
+        const text = document.getElementById('dict-text').value.trim();
+        const tasks = ['desc', 'draw', 'mime'].filter(t => document.getElementById('dict-task-' + t).checked);
+
+        const say = (txt, color) => { msg.style.color = color; msg.textContent = txt; };
+
+        if (!names) return say('Vyplňte prosím pole „Vaše jména“.', 'var(--accent-amber)');
+        if (!text) return say('Vyplňte prosím pole „Výraz“.', 'var(--accent-amber)');
+        if (!tasks.length) return say('Zaškrtněte alespoň jednu disciplínu.', 'var(--accent-amber)');
+
+        const btn = document.getElementById('dict-submit');
+        btn.disabled = true;
+        say('Ukládám…', '#94a3b8');
+        try {
+            const res = await fetch(DICT_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ names: names, text: text, tasks: tasks, pts: dictPts, deviceId: getDeviceId() })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const why = (data && (data.error || data.detail)) || ('HTTP ' + res.status);
+                say('Nepodařilo se uložit: ' + why, 'var(--accent-red)');
+            } else {
+                localStorage.setItem(NAMES_KEY, names);
+                if (data.word && data.word.id) addOwnId(data.word.id);
+                document.getElementById('dict-text').value = '';
+                document.getElementById('dict-text').focus();
+                if (data.counts) sharedCounts = data.counts;
+                say('✅ Výraz „' + text + '“ je ve společném slovníku.', 'var(--accent-green)');
+                playBeep(880, 'sine', 0.08);
+                refreshDictionary();
+            }
+        } catch (e) {
+            say('Nepodařilo se uložit: bez spojení se serverem.', 'var(--accent-red)');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
 
     /* Game State */
     const TASKS = ['desc', 'draw', 'mime'];
@@ -840,6 +1136,9 @@
         gameState.scores = new Array(gameConfig.teams.length).fill(0);
         gameState.teamTurnCounts = new Array(gameConfig.teams.length).fill(0);
         gameState.currentTeamIdx = 0;
+        usedSharedIds.clear();
+        usedBuiltinKeys.clear();
+        refreshDictionary();
 
         document.getElementById('setup-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
@@ -873,7 +1172,7 @@
         }
 
         // Pick Word
-        gameState.currentWord = getRandomWord();
+        gameState.currentWord = pickWord(gameState.currentTask);
         renderWordInfo();
 
         // Reset Timer display
@@ -885,6 +1184,9 @@
 
     function selectManualTask(task) {
         setTask(task);
+        gameState.currentWord = pickWord(task);
+        gameState.swappedThisTurn = false;
+        renderWordInfo();
         const totalDuration = getTaskDuration(task);
         gameState.timeLeft = totalDuration;
         updateTimerDisplay(totalDuration, totalDuration);
@@ -913,14 +1215,60 @@
         return gameConfig.times[task] || 60;
     }
 
-    function getRandomWord() {
-        return WORDS_DB[Math.floor(Math.random() * WORDS_DB.length)];
+    /* ── Losování výrazu: 1) výrazy ostatních, 2) vlastní, 3) zabudovaný slovník ── */
+    function pickWord(task) {
+        const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+        const mine = getDeviceId();
+        const suitable = sharedWords.filter(w => Array.isArray(w.tasks) && w.tasks.includes(task));
+
+        // 1) výrazy ostatních týmů (cizí zařízení), které ještě ve hře nebyly
+        const others = suitable.filter(w => w.deviceId !== mine && !usedSharedIds.has(w.id));
+        if (others.length) {
+            const w = pick(others);
+            usedSharedIds.add(w.id);
+            return { w: w.text, pts: w.pts, authors: w.names, id: w.id, source: 'children' };
+        }
+
+        // 2) vlastní výrazy (stejné zařízení / stejná jména)
+        const own = suitable.filter(w => !usedSharedIds.has(w.id));
+        if (own.length) {
+            const w = pick(own);
+            usedSharedIds.add(w.id);
+            return { w: w.text, pts: w.pts, authors: w.names, id: w.id, source: 'children' };
+        }
+
+        // 3) zabudovaný univerzální slovník
+        const builtin = WORDS_DB.filter(x => x.tasks.includes(task) && !usedBuiltinKeys.has(x.w));
+        if (builtin.length) {
+            const x = pick(builtin);
+            usedBuiltinKeys.add(x.w);
+            return { w: x.w, pts: x.pts, authors: null, source: 'builtin' };
+        }
+
+        // všechno vyčerpáno — začni znovu od začátku (ať hra nespadne)
+        usedSharedIds.clear();
+        usedBuiltinKeys.clear();
+        const again = suitable.length
+            ? { w: suitable[0].text, pts: suitable[0].pts, authors: suitable[0].names, id: suitable[0].id, source: 'children' }
+            : pick(WORDS_DB.filter(x => x.tasks.includes(task)) || WORDS_DB);
+        if (again.id) usedSharedIds.add(again.id);
+        else usedBuiltinKeys.add(again.w);
+        return again;
     }
 
     function renderWordInfo() {
         document.getElementById('secret-word').textContent = gameState.currentWord.w;
         const pts = gameState.swappedThisTurn ? Math.max(1, gameState.currentWord.pts - 1) : gameState.currentWord.pts;
         document.getElementById('secret-points').textContent = `${pts} ${pts === 1 ? 'bod' : (pts < 5 ? 'body' : 'bodů')}`;
+
+        const authors = document.getElementById('word-authors');
+        if (authors) {
+            if (gameState.currentWord.authors) {
+                authors.textContent = 'Tento výraz navrhli: ' + gameState.currentWord.authors;
+            } else {
+                authors.textContent = 'Výraz ze zabudovaného slovníku';
+            }
+        }
     }
 
     function revealSecretWord() {
@@ -939,7 +1287,7 @@
     function swapCurrentWord() {
         if (gameState.swappedThisTurn) return;
         gameState.swappedThisTurn = true;
-        gameState.currentWord = getRandomWord();
+        gameState.currentWord = pickWord(gameState.currentTask);
         renderWordInfo();
         document.getElementById('swap-word-btn').style.display = 'none';
         playBeep(600, 'triangle', 0.1);
@@ -1148,7 +1496,10 @@
     }
 
     // Direct Boot
+    getDeviceId();               // založí ID zařízení pro rozpoznání vlastních výrazů
     renderSetupTeams();
+    refreshDictionary();         // načte společný slovník a počítadla
+    setInterval(refreshDictionary, 15000);   // průběžná aktualizace počítadel na pozadí
 </script>
 </body>
 </html>
