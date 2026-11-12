@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="cs"><head><meta charset="utf-8"><title>test zvuku</title>
+<link rel="stylesheet" href="styles.css"></head>
+<body>
+<main id="app"></main>
+<pre id="out" style="white-space:pre-wrap;font:12px monospace"></pre>
+<script>
+/* stub WebAudio — zaznamená, které tóny se rozezněly */
+window.__tones = [];
+window.__starts = 0;
+class FakeGain {
+  constructor() { this.gain = { setValueAtTime(){}, exponentialRampToValueAtTime(){}, linearRampToValueAtTime(){} }; }
+  connect(n) { return n; }
+}
+class FakeOsc {
+  constructor(ctx) { this.ctx = ctx; this.frequency = { value: 0, setValueAtTime(v){ this.value = v; }, exponentialRampToValueAtTime(v){ this.value = v; } }; this.type='sine'; }
+  connect(n) { return n; }
+  start() { window.__starts++; window.__tones.push(this.frequency.value || 0); }
+  stop() {}
+}
+class FakeAudioContext {
+  constructor() { this.state = 'running'; this.currentTime = 0; this.destination = {}; }
+  createGain() { return new FakeGain(); }
+  createOscillator() { return new FakeOsc(this); }
+  resume() {}
+}
+window.AudioContext = FakeAudioContext;
+window.confirm = () => true;
+window.addEventListener('error', e => { window.__err = (window.__err || '') + 'JS ERROR: ' + e.message + '\n'; });
+</script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const T = [];
+const check = (n, c, d) => T.push((c ? 'OK  ' : 'FAIL') + ' | ' + n + (d !== undefined ? ' | ' + d : ''));
+const q = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+(async () => {
+  try {
+    // 1. tóny se rozezní
+    S.sound = 'soft';
+    window.__tones = []; Sfx.tick();
+    check('tichý tik zahraje tón', window.__tones.length === 1 && window.__tones[0] === 880, JSON.stringify(window.__tones));
+    window.__tones = []; Sfx.tickUrgent();
+    check('hlasitější tik (10 s) zahraje vyšší tón', window.__tones[0] === 1320, JSON.stringify(window.__tones));
+    window.__tones = []; Sfx.tickFinal();
+    check('poslední 3 s mají jiný tón', window.__tones[0] === 1760, JSON.stringify(window.__tones));
+    window.__tones = []; Sfx.gong();
+    check('gong: víc tónů (zvon)', window.__tones.length >= 4, JSON.stringify(window.__tones));
+
+    // hlasitost
+    S.sound = 'off';
+    window.__tones = []; window.__starts = 0;
+    Sfx.tick(); Sfx.gong();
+    check('vypnutý zvuk nic nezahraje', window.__starts === 0, 'startů=' + window.__starts);
+    S.sound = 'loud';
+
+    // 2. časomíra: limit 3 s → tiky a gong na nule
+    localStorage.removeItem('perlicky-v1');
+    S = newState();
+    S.limit = 3;
+    S.sound = 'soft';
+    S.teams = [{ id: 't1', name: 'A', players: [], score: 0, p: 0 }, { id: 't2', name: 'B', players: [], score: 0, p: 0 }];
+    S.view = 'board';
+    render();
+    window.__tones = []; window.__starts = 0;
+    openQuestion(QUESTIONS[0].id);
+    await sleep(3800);
+    check('odpočet tiká', window.__starts >= 3, 'startů=' + window.__starts);
+    check('gong na nule', window.__tones.some(f => f > 150 && f < 200), JSON.stringify(window.__tones.slice(-6)));
+    check('hláška o vypršení', (q('[data-timeout-hint]') || {}).textContent.includes('vypršel'), (q('[data-timeout-hint]') || {}).textContent);
+    check('časomíra na 0', (q('.tnum') || {}).textContent === '0', (q('.tnum') || {}).textContent);
+
+    // 3. bez časomíry se netiká
+    S.limit = 0;
+    window.__starts = 0;
+    render(); openQuestion(QUESTIONS[1].id);
+    await sleep(1500);
+    check('bez časomíry žádný tón', window.__starts === 0, 'startů=' + window.__starts);
+    check('bez časomíry není odpočet', q('.timer') === null || q('.timer').style.display === 'none');
+
+    const failed = T.filter(x => x.startsWith('FAIL')).length;
+    document.getElementById('out').textContent = T.join('\n') + (window.__err || '') + '\n\n' +
+      (failed ? 'FAILŮ: ' + failed + ' z ' + T.length : 'VŠE OK (' + T.length + ' kontrol)');
+    document.title = failed ? 'FAIL-' + failed : 'PASS-' + T.length;
+  } catch (e) {
+    document.getElementById('out').textContent = T.join('\n') + 'VÝJIMKA: ' + e.message;
+    document.title = 'ERROR';
+  }
+})();
+</script>
+</body></html>

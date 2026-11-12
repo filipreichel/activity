@@ -37,25 +37,43 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 ## Perličky češtiny (`/perlicky/`)
 
 Týmový kvíz o českém jazyce převedený z prezentace `PERLIČKY ČEŠTINY.ppsx`
-(5 kategorií × 5 otázek, bodování v tisících, krádeže otázek, střídání hráčů).
-Čistě statické, bez API a bez databáze, stav hry v `localStorage`.
+(5 kategorií × 5 otázek, 2–8 týmů, střídání hráčů). Čistě statické, bez API
+a bez databáze, stav hry v `localStorage`, druhé okno se synchronizuje přes
+`BroadcastChannel`.
+
+**Pravidla:** hodnota otázky 1 000–5 000 · tým na tahu neví → nic neztrácí, ale
+další tým v pořadí může **ukrást za polovinu** (500–2 500) · kdo krade a netrefí,
+o polovinu **přichází** (skóre může jít do minusu) · krádež jde jen jednou za otázku
+a nebere hráči jeho vlastní kolo · krádež lze odmítnout.
+
+**Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
+výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).
+Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejném prohlížeči.
 
 | Soubor | Co je uvnitř |
 |---|---|
 | `perlicky/index.html` | kostra stránky |
 | `perlicky/styles.css` | vzhled (navazuje na původní prezentaci — světlý podklad, ploché barvy) |
 | `perlicky/data.js` | všech 25 otázek, varianty, správné odpovědi a vysvětlení |
-| `perlicky/app.js` | herní logika: týmy, střídání hráčů, krádeže, body, ukládání |
+| `perlicky/app.js` | herní logika, časomíra se zvukem, dvě okna, ukládání |
 | `perlicky/img/` | ilustrace vytáhnuté z prezentace |
-| `perlicky/__test.html` | regresní test (43 kontrol) — **nevydává se**, viz `.vercelignore` |
+| `perlicky/__test.html` | regresní test řídicího okna (30 kontrol) a projekce (19) |
+| `perlicky/__test-sound.html` | test zvuků a gongu přes stub WebAudio (11 kontrol) |
+| `perlicky/__demo.html` | náhled stavů pro screenshoty (`?v=board|question|offer|reveal&role=display`) |
 
-Regresní test se pouští v prohlížeči proti lokálnímu serveru:
+Testy se pouští v prohlížeči proti lokálnímu serveru (nevydávají se, hlídá je `.vercelignore`):
 
 ```bash
 cd perlicky && python3 -m http.server 8765 --bind 127.0.0.1 &
-google-chrome --headless=new --virtual-time-budget=10000 --dump-dom \
-  http://127.0.0.1:8765/__test.html | grep -o '<title>[^<]*</title>'   # → PASS-43
+for u in "__test.html" "__test.html?role=display" "__test-sound.html"; do
+  google-chrome --headless=new --virtual-time-budget=15000 --dump-dom \
+    "http://127.0.0.1:8765/$u" | grep -o '<title>[^<]*</title>'
+done   # → PASS-30, PASS-19, PASS-11
 ```
+
+Skutečné propojení dvou oken (řídicí → projekce) se ověřuje přes CDP: otevřít
+`?role=display` tlačítkem, pak v projekci zkontrolovat, že nemá `.teacher` ani
+`.options li.right` a že jí chodí odpočet.
 
 ## Nasazení
 

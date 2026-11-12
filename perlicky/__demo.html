@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="cs"><head><meta charset="utf-8"><title>demo</title>
+<link rel="stylesheet" href="styles.css"></head>
+<body>
+<main id="app"></main>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+  // náhled stavu pro screenshoty: __demo.html?v=question&role=display
+  const p = new URLSearchParams(location.search);
+  const v = p.get('v') || 'board';
+  const teams = [
+    { id: 't1', name: 'Nováci', players: ['Petr', 'Jana', 'Lukáš'], score: 4500, p: 0 },
+    { id: 't2', name: 'Veteráni', players: [], score: -500, p: 0 },
+    { id: 't3', name: 'Perličky', players: ['Karel'], score: 2000, p: 0 },
+    { id: 't4', name: 'Šesťáci', players: [], score: 0, p: 0 },
+    { id: 't5', name: 'Dvojka', players: [], score: 0, p: 0 },
+    { id: 't6', name: 'Tryskáči', players: [], score: 0, p: 0 },
+    { id: 't7', name: 'Kosmonauti', players: [], score: 0, p: 0 },
+    { id: 't8', name: 'Béčka', players: [], score: 0, p: 0 }
+  ];
+  const used = {
+    [QUESTIONS[0].id]: { owner: 't1', stolen: false, penalty: null },
+    [QUESTIONS[7].id]: { owner: null, stolen: true, penalty: 't2' },
+    [QUESTIONS[14].id]: { owner: 't3', stolen: true, penalty: null }
+  };
+  const cur = {
+    qid: 'q18', phase: v === 'offer' ? 'offer' : v === 'reveal' ? 'done' : 'ask',
+    respondIdx: 1, askerIdx: 1,
+    offerIdx: v === 'offer' ? 2 : null,
+    stealUsed: false,
+    result: v === 'reveal' ? { teamId: null, pts: -2000, loserId: 't2', stolen: true } : null
+  };
+  S.teams = teams;
+  S.used = used;
+  S.turn = 1;
+  S.limit = 30;
+  S.sound = 'soft';
+  S.current = (v === 'question' || v === 'offer' || v === 'reveal') ? cur : null;
+  S.timeLeft = 18;
+  if (ROLE === 'display') {
+    document.body.classList.add('display-mode');
+    applyRemote({ teams, used, turn: 1, limit: 30, view: v === 'offer' ? 'question' : v, current: S.current, timeLeft: 18 });
+  } else {
+    S.view = v === 'offer' ? 'question' : v;
+    render();
+    if (v === 'question' || v === 'offer') { timeLeft = 18; paintTimer(); }
+  }
+</script>
+</body></html>

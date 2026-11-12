@@ -259,7 +259,7 @@ function applyRemote(st) {
   const sig = JSON.stringify([
     S.view,
     S.current && S.current.qid, S.current && S.current.phase, S.current && S.current.respondIdx,
-    S.current && S.current.offerIdx,
+    S.current && S.current.offerIdx, S.current && S.current.result,
     S.teams.map(t => [t.name, t.score, t.players.join('|'), t.p]),
     S.used, S.limit
   ]);
@@ -642,13 +642,13 @@ function viewQuestion(disp) {
 
     ${box}
 
+    ${teacher}
+
     <div class="qbody">
       <p class="qtext">${esc(q.q)}</p>
       ${img}
       ${opts}
     </div>
-
-    ${teacher}
 
     ${disp ? '' : `<div class="foot-actions">
       <span class="kbd">S</span> správně &nbsp;·&nbsp; <span class="kbd">N</span> nevěděl &nbsp;·&nbsp;
