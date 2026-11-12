@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přehled slovníku · Aktivity pro Ypsilon</title>
+    <style>
+        :root {
+            --bg: #0f172a; --panel: rgba(30, 41, 59, 0.85); --border: rgba(148, 163, 184, 0.25);
+            --text: #e2e8f0; --muted: #94a3b8; --blue: #38bdf8; --purple: #a855f7; --amber: #f59e0b; --green: #22c55e; --red: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(circle at 20% 0%, #1e293b 0%, var(--bg) 55%);
+            min-height: 100vh; color: var(--text); padding: 1rem 1rem 3rem;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .wrap { max-width: 1050px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+        header { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+        h1 { font-size: 1.3rem; font-weight: 800; }
+        .sub { color: var(--muted); font-size: 0.85rem; }
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 1rem; padding: 1rem; }
+        .bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; }
+        .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); display: inline-block; }
+        .dot.ok { background: var(--green); } .dot.bad { background: var(--red); }
+        .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+        .chip {
+            padding: 0.35rem 0.7rem; border-radius: 999px; background: rgba(148, 163, 184, 0.12);
+            border: 1px solid var(--border); font-size: 0.82rem; font-weight: 700;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        th, td { text-align: left; padding: 0.5rem 0.55rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+        th { cursor: pointer; user-select: none; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); white-space: nowrap; }
+        th:hover { color: var(--text); }
+        th .arrow { font-size: 0.7rem; opacity: 0.7; }
+        tbody tr:hover { background: rgba(148, 163, 184, 0.06); }
+        td.num { white-space: nowrap; font-weight: 700; }
+        td.na { color: rgba(148, 163, 184, 0.35); }
+        .p1 { color: #7dd3fc; } .p2 { color: #c4b5fd; } .p3 { color: #fcd34d; }
+        .empty { color: var(--muted); font-size: 0.9rem; padding: 1rem 0; }
+        .who { font-weight: 700; }
+        .when { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+        button.refresh {
+            margin-left: auto; padding: 0.4rem 0.8rem; border-radius: 0.6rem; cursor: pointer;
+            border: 1px solid var(--border); background: rgba(148, 163, 184, 0.12); color: var(--text);
+            font-weight: 700; font-size: 0.8rem; font-family: inherit;
+        }
+        button.refresh:hover { border-color: var(--blue); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>📋 Přehled slovníku</h1>
+        <span class="sub">Aktivity pro Ypsilon — pohled do databáze (obnovuje se sám)</span>
+    </header>
+
+    <div class="panel">
+        <div class="bar">
+            <span><span class="dot" id="dot"></span> <span id="conn">připojuji…</span></span>
+            <span>načteno <b id="loaded">—</b></span>
+            <span>další obnovení za <b id="next">10</b> s</span>
+            <button class="refresh" id="refresh">Obnovit teď</button>
+        </div>
+        <div class="chips" id="counts"></div>
+    </div>
+
+    <div class="panel">
+        <table>
+            <thead>
+                <tr>
+                    <th data-sort="names">Tým / jména <span class="arrow">↕</span></th>
+                    <th data-sort="text">Výraz <span class="arrow">↕</span></th>
+                    <th data-sort="desc">Popis <span class="arrow">↕</span></th>
+                    <th data-sort="draw">Kreslení <span class="arrow">↕</span></th>
+                    <th data-sort="mime">Pantomima <span class="arrow">↕</span></th>
+                    <th data-sort="created">Přidáno <span class="arrow">↕</span></th>
+                    <th data-sort="updated">Upraveno <span class="arrow">↕</span></th>
+                </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" style="display: none;">Slovník je zatím prázdný — děti ještě nic nepřidaly.</div>
+    </div>
+</div>
+
+<script>
+    const API = '/api/slovnik';
+    const PERIOD = 10;
+    let words = [];
+    let counts = { desc: 0, draw: 0, mime: 0, total: 0 };
+    let sortKey = 'created';
+    let sortDir = -1;
+    let tick = PERIOD;
+
+    function fmt(ts) {
+        if (!ts) return '—';
+        const d = new Date(ts);
+        if (isNaN(d)) return '—';
+        const today = new Date();
+        const sameDay = d.toDateString() === today.toDateString();
+        const time = d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return sameDay ? time : d.toLocaleDateString('cs-CZ') + ' ' + time;
+    }
+
+    function sortVal(w, key) {
+        if (key === 'desc' || key === 'draw' || key === 'mime') {
+            return w.tasks.includes(key) ? (w.points[key] || 0) : -1;
+        }
+        if (key === 'created') return w.createdAt || 0;
+        if (key === 'updated') return w.updatedAt || 0;
+        return String(w[key] || '').toLowerCase();
+    }
+
+    function render() {
+        const isTask = key => key === 'desc' || key === 'draw' || key === 'mime';
+        const sorted = words.slice().sort((a, b) => {
+            if (isTask(sortKey)) {
+                const va = a.tasks.includes(sortKey) ? (a.points[sortKey] || 0) : null;
+                const vb = b.tasks.includes(sortKey) ? (b.points[sortKey] || 0) : null;
+                if (va === null && vb === null) return 0;
+                if (va === null) return 1;      // výrazy bez té disciplíny vždy nakonec
+                if (vb === null) return -1;
+                return (va - vb) * sortDir;
+            }
+            const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+            if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * sortDir;
+            return String(va).localeCompare(String(vb), 'cs') * sortDir;
+        });
+
+        document.getElementById('rows').innerHTML = sorted.map(w => {
+            const cell = (key) => {
+                if (!w.tasks.includes(key)) return '<td class="na">—</td>';
+                const v = w.points[key] || '?';
+                return `<td class="num p${v}">${v} b</td>`;
+            };
+            return `<tr>
+                <td class="who">${esc(w.names)}</td>
+                <td>${esc(w.text)}</td>
+                ${cell('desc')}${cell('draw')}${cell('mime')}
+                <td class="when">${fmt(w.createdAt)}</td>
+                <td class="when">${fmt(w.updatedAt)}</td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('empty').style.display = sorted.length ? 'none' : 'block';
+
+        document.getElementById('counts').innerHTML =
+            `<span class="chip" style="color: var(--blue);">Popis <b style="color: var(--text);">${counts.desc || 0}</b></span>` +
+            `<span class="chip" style="color: var(--purple);">Kreslení <b style="color: var(--text);">${counts.draw || 0}</b></span>` +
+            `<span class="chip" style="color: var(--amber);">Pantomima <b style="color: var(--text);">${counts.mime || 0}</b></span>` +
+            `<span class="chip">Celkem <b style="color: var(--text);">${counts.total || 0}</b></span>`;
+    }
+
+    function esc(s) {
+        return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function load() {
+        const dot = document.getElementById('dot');
+        try {
+            const res = await fetch(API, { cache: 'no-store' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                dot.className = 'dot bad';
+                document.getElementById('conn').textContent = data.error || ('chyba HTTP ' + res.status);
+                words = [];
+                counts = { desc: 0, draw: 0, mime: 0, total: 0 };
+            } else {
+                dot.className = 'dot ok';
+                document.getElementById('conn').textContent = 'připojeno ke slovníku';
+                words = Array.isArray(data.words) ? data.words : [];
+                counts = data.counts || { desc: 0, draw: 0, mime: 0, total: words.length };
+            }
+        } catch (e) {
+            dot.className = 'dot bad';
+            document.getElementById('conn').textContent = 'nedostupné (bez spojení)';
+            words = [];
+        }
+        document.getElementById('loaded').textContent = new Date().toLocaleTimeString('cs-CZ');
+        render();
+        tick = PERIOD;
+    }
+
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            const defaultDesc = ['created', 'updated', 'desc', 'draw', 'mime'].indexOf(key) >= 0;
+            if (sortKey === key) {
+                sortDir = -sortDir;
+            } else {
+                sortKey = key;
+                sortDir = defaultDesc ? -1 : 1;
+            }
+            document.querySelectorAll('th .arrow').forEach(a => a.textContent = '↕');
+            th.querySelector('.arrow').textContent = sortDir === 1 ? '↑' : '↓';
+            render();
+        });
+    });
+
+    document.getElementById('refresh').addEventListener('click', load);
+
+    setInterval(() => {
+        tick -= 1;
+        if (tick <= 0) { load(); } else { document.getElementById('next').textContent = tick; }
+    }, 1000);
+
+    load();
+</script>
+</body>
+</html>

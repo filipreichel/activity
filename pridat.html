@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vkládání výrazů · Aktivity pro Ypsilon</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel: rgba(30, 41, 59, 0.85);
+            --border: rgba(148, 163, 184, 0.25);
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(circle at 20% 0%, #1e293b 0%, var(--bg-dark) 55%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            padding: 1rem;
+            padding-bottom: 3rem;
+        }
+        .wrap { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+        header { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        h1 { font-size: 1.35rem; font-weight: 800; }
+        .back {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            color: var(--accent-blue); text-decoration: none; font-size: 0.9rem; font-weight: 600;
+            padding: 0.4rem 0.7rem; border: 1px solid var(--border); border-radius: 0.6rem;
+        }
+        .back:hover { background: rgba(56, 189, 248, 0.1); }
+        .panel {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 1rem;
+            padding: 1rem; backdrop-filter: blur(8px);
+        }
+        .panel h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; }
+        input[type="text"], select {
+            width: 100%; padding: 0.7rem 0.8rem; border-radius: 0.6rem;
+            border: 1px solid var(--border); background: rgba(15, 23, 42, 0.7);
+            color: var(--text); font-size: 1rem; font-family: inherit;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--accent-blue); }
+        .row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+        .row > div { flex: 1 1 200px; }
+        .task-row {
+            display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+            padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem;
+            margin-bottom: 0.5rem; background: rgba(15, 23, 42, 0.35);
+        }
+        .task-row.on { border-color: rgba(56, 189, 248, 0.55); background: rgba(56, 189, 248, 0.07); }
+        .task-check { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.95rem; min-width: 140px; }
+        .task-check input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent-blue); }
+        .pills { display: flex; gap: 0.35rem; margin-left: auto; }
+        .pill {
+            padding: 0.35rem 0.6rem; border-radius: 999px; border: 1px solid var(--border);
+            background: transparent; color: var(--muted); font-weight: 700; font-size: 0.82rem;
+            cursor: pointer; font-family: inherit;
+        }
+        .pill:hover:not(:disabled) { border-color: var(--accent-blue); color: var(--text); }
+        .pill.on { background: var(--accent-blue); border-color: var(--accent-blue); color: #0b1220; }
+        .pill:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+            padding: 0.7rem 1rem; border-radius: 0.7rem; border: none; cursor: pointer;
+            font-weight: 700; font-size: 0.95rem; font-family: inherit;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--accent-blue); color: #0b1220; }
+        .btn-secondary { background: rgba(148, 163, 184, 0.15); color: var(--text); border: 1px solid var(--border); }
+        .btn-small { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+        .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem;
+            border-radius: 999px; background: rgba(148, 163, 184, 0.12);
+            border: 1px solid var(--border); font-size: 0.82rem; font-weight: 700;
+        }
+        .msg { font-size: 0.88rem; min-height: 1.3rem; margin: 0.5rem 0; }
+        .word {
+            display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+            padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem;
+            margin-bottom: 0.5rem; background: rgba(15, 23, 42, 0.35);
+        }
+        .word .text { font-weight: 700; }
+        .tag {
+            font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px;
+            border: 1px solid var(--border); color: var(--muted);
+        }
+        .tag.desc { color: var(--accent-blue); border-color: rgba(56, 189, 248, 0.5); }
+        .tag.draw { color: var(--accent-purple); border-color: rgba(168, 85, 247, 0.5); }
+        .tag.mime { color: var(--accent-amber); border-color: rgba(245, 158, 11, 0.5); }
+        .hint { font-size: 0.8rem; color: var(--muted); }
+        .empty { font-size: 0.9rem; color: var(--muted); }
+        .status { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+        .switch { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <a class="back" href="./">← Zpět do hry</a>
+        <h1><i class="fa-solid fa-book-open" style="color: var(--accent-blue);"></i> Vkládání výrazů</h1>
+    </header>
+
+    <div class="panel">
+        <h2><i class="fa-solid fa-users" style="color: var(--accent-blue);"></i> Vaše jména</h2>
+        <input type="text" id="names" placeholder="Např. Kuba a Terka" maxlength="60" autocomplete="off">
+        <div class="hint" style="margin-top: 0.45rem;">Uloží se v tomhle prohlížeči a zůstane předvyplněné. Pole můžeš kdykoliv změnit.</div>
+    </div>
+
+    <div class="panel">
+        <h2><i class="fa-solid fa-chart-simple" style="color: var(--accent-green);"></i> Kolik výrazů už je ve slovníku</h2>
+        <div class="chips" id="counts"></div>
+        <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+        <h2 id="form-title"><i class="fa-solid fa-plus" style="color: var(--accent-purple);"></i> Nový výraz</h2>
+        <div class="hint" style="margin-bottom: 0.75rem;">Vyplň výraz, zaškrtni disciplíny a u každé zvol obtížnost. Uložit jde jen tehdy, když je vybraná aspoň jedna disciplína a u ní body.</div>
+
+        <label for="word">Výraz</label>
+        <input type="text" id="word" placeholder="Např. Prasklá pneumatika" maxlength="80" autocomplete="off" style="margin-bottom: 0.85rem;">
+
+        <label>Vhodnost pro disciplíny a obtížnost</label>
+        <div id="tasks"></div>
+
+        <div class="msg" id="msg"></div>
+        <div class="row" style="justify-content: flex-end;">
+            <button class="btn btn-secondary" id="cancel-edit" style="display: none;">Zrušit úpravu</button>
+            <button class="btn btn-primary" id="save"><i class="fa-solid fa-check"></i> <span id="save-label">Uložit výraz</span></button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2><i class="fa-solid fa-list" style="color: var(--accent-amber);"></i> Moje výrazy <span class="hint" id="mine-count"></span></h2>
+        <div id="mine"></div>
+    </div>
+</div>
+
+<script>
+    const API = '/api/slovnik';
+    const NAMES_KEY = 'yp_names';
+    const DEVICE_KEY = 'yp_device_id';
+    const TASKS = [
+        { key: 'desc', label: 'Popis', icon: 'fa-comment', cls: 'desc' },
+        { key: 'draw', label: 'Kreslení', icon: 'fa-palette', cls: 'draw' },
+        { key: 'mime', label: 'Pantomima', icon: 'fa-person-walking', cls: 'mime' }
+    ];
+
+    let words = [];
+    let counts = { desc: 0, draw: 0, mime: 0, total: 0 };
+    let state = 'unknown';
+    let detail = '';
+    let draft = { tasks: {}, points: {} };   // nic není předvybrané
+    let editingId = null;
+
+    function deviceId() {
+        let id = localStorage.getItem(DEVICE_KEY);
+        if (!id) {
+            id = (window.crypto && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+            localStorage.setItem(DEVICE_KEY, id);
+        }
+        return id;
+    }
+
+    function plural(n) {
+        if (n === 1) return '1 výraz';
+        if (n >= 2 && n <= 4) return n + ' výrazy';
+        return n + ' výrazů';
+    }
+
+    function renderCounts() {
+        document.getElementById('counts').innerHTML = TASKS.map(t =>
+            `<span class="chip" style="color: var(--accent-${t.key === 'desc' ? 'blue' : t.key === 'draw' ? 'purple' : 'amber'});">
+                <i class="fa-solid ${t.icon}"></i> ${t.label} <b style="color: var(--text);">${counts[t.key] || 0}</b></span>`
+        ).join('');
+
+        const st = document.getElementById('status');
+        if (state === 'ok') {
+            st.textContent = counts.total ? '✅ Ve společném slovníku je ' + plural(counts.total) + '.' : '✅ Slovník je zatím prázdný.';
+        } else if (state === 'unconfigured') {
+            st.textContent = '⚠️ Společný slovník zatím není připojený (' + (detail || 'chybí databáze') + ').';
+        } else if (state === 'offline') {
+            st.textContent = '⚠️ Společný slovník je nedostupný (' + (detail || 'bez spojení') + ').';
+        } else {
+            st.textContent = '';
+        }
+    }
+
+    function renderTasks() {
+        document.getElementById('tasks').innerHTML = TASKS.map(t => {
+            const on = !!draft.tasks[t.key];
+            const pts = draft.points[t.key];
+            return `<div class="task-row ${on ? 'on' : ''}">
+                <label class="task-check">
+                    <input type="checkbox" data-task="${t.key}" ${on ? 'checked' : ''}>
+                    <span style="color: var(--accent-${t.key === 'desc' ? 'blue' : t.key === 'draw' ? 'purple' : 'amber'});">
+                        <i class="fa-solid ${t.icon}"></i> ${t.label}</span>
+                </label>
+                <div class="pills">
+                    ${[1, 2, 3].map(v => `<button class="pill ${pts === v ? 'on' : ''}" data-task="${t.key}" data-pts="${v}" ${on ? '' : 'disabled'}>${v} b</button>`).join('')}
+                </div>
+            </div>`;
+        }).join('');
+
+        document.querySelectorAll('#tasks input[type=checkbox]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const key = cb.dataset.task;
+                if (cb.checked) {
+                    draft.tasks[key] = true;
+                } else {
+                    delete draft.tasks[key];
+                    delete draft.points[key];
+                }
+                renderTasks();
+            });
+        });
+
+        document.querySelectorAll('#tasks .pill').forEach(p => {
+            p.addEventListener('click', () => {
+                if (p.disabled) return;
+                draft.points[p.dataset.task] = parseInt(p.dataset.pts, 10);
+                renderTasks();
+            });
+        });
+    }
+
+    function renderMine() {
+        const mine = words.filter(w => w.deviceId === deviceId());
+        document.getElementById('mine-count').textContent = mine.length ? '(' + mine.length + ')' : '';
+        const box = document.getElementById('mine');
+        if (!mine.length) {
+            box.innerHTML = '<div class="empty">Zatím jsi odsud nic nepřidal.</div>';
+            return;
+        }
+        box.innerHTML = mine.map(w => {
+            const tags = w.tasks.map(t => {
+                const meta = TASKS.find(x => x.key === t);
+                return `<span class="tag ${meta.cls}">${meta.label} · ${w.points[t] || '?'} b</span>`;
+            }).join(' ');
+            return `<div class="word">
+                <span class="text">${escapeHtml(w.text)}</span>
+                ${tags}
+                <button class="btn btn-secondary btn-small" style="margin-left: auto;" data-edit="${w.id}">
+                    <i class="fa-solid fa-pen"></i> Upravit</button>
+            </div>`;
+        }).join('');
+
+        box.querySelectorAll('[data-edit]').forEach(b => {
+            b.addEventListener('click', () => startEdit(b.dataset.edit));
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function startEdit(id) {
+        const w = words.find(x => x.id === id);
+        if (!w) return;
+        editingId = id;
+        document.getElementById('word').value = w.text;
+        document.getElementById('names').value = w.names || document.getElementById('names').value;
+        draft = { tasks: {}, points: {} };
+        w.tasks.forEach(t => {
+            draft.tasks[t] = true;
+            draft.points[t] = w.points[t] || 2;
+        });
+        renderTasks();
+        document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen" style="color: var(--accent-amber);"></i> Úprava výrazu';
+        document.getElementById('save-label').textContent = 'Uložit změny';
+        document.getElementById('cancel-edit').style.display = 'inline-flex';
+        document.getElementById('msg').textContent = '';
+        document.getElementById('word').focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+        editingId = null;
+        draft = { tasks: {}, points: {} };
+        document.getElementById('word').value = '';
+        renderTasks();
+        document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-plus" style="color: var(--accent-purple);"></i> Nový výraz';
+        document.getElementById('save-label').textContent = 'Uložit výraz';
+        document.getElementById('cancel-edit').style.display = 'none';
+    }
+
+    function say(text, color) {
+        const m = document.getElementById('msg');
+        m.style.color = color;
+        m.textContent = text;
+    }
+
+    async function refresh() {
+        try {
+            const res = await fetch(API, { cache: 'no-store' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                state = res.status === 503 ? 'unconfigured' : 'offline';
+                detail = data.error || ('HTTP ' + res.status);
+                words = [];
+                counts = { desc: 0, draw: 0, mime: 0, total: 0 };
+            } else {
+                state = 'ok';
+                detail = '';
+                words = Array.isArray(data.words) ? data.words : [];
+                counts = data.counts || { desc: 0, draw: 0, mime: 0, total: words.length };
+            }
+        } catch (e) {
+            state = 'offline';
+            detail = 'bez spojení';
+            words = [];
+        }
+        renderCounts();
+        renderMine();
+    }
+
+    async function save() {
+        const btn = document.getElementById('save');
+        const names = document.getElementById('names').value.trim();
+        const text = document.getElementById('word').value.trim();
+        const tasks = Object.keys(draft.tasks);
+
+        if (!names) { say('Vyplň prosím „Vaše jména“.', 'var(--accent-amber)'); document.getElementById('names').focus(); return; }
+        if (!text) { say('Vyplň prosím „Výraz“.', 'var(--accent-amber)'); document.getElementById('word').focus(); return; }
+        if (!tasks.length) { say('Zaškrtni alespoň jednu disciplínu.', 'var(--accent-amber)'); return; }
+        const missing = tasks.find(t => !draft.points[t]);
+        if (missing) {
+            const meta = TASKS.find(x => x.key === missing);
+            say('U disciplíny „' + meta.label + '“ zvol obtížnost (1–3 body).', 'var(--accent-amber)');
+            return;
+        }
+
+        const payload = {
+            names: names,
+            text: text,
+            tasks: tasks,
+            points: draft.points,
+            deviceId: deviceId()
+        };
+        if (editingId) payload.id = editingId;
+
+        btn.disabled = true;
+        say(editingId ? 'Ukládám změny…' : 'Ukládám…', 'var(--muted)');
+        try {
+            const res = await fetch(API, {
+                method: editingId ? 'PATCH' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                say(data.error || ('Nepodařilo se uložit (HTTP ' + res.status + ').'), 'var(--accent-red)');
+                if (data.existing) {
+                    // výraz už existuje — nabídneme přejít na úpravu, pokud je náš
+                    if (data.existing.deviceId === deviceId()) {
+                        say(data.error + ' Otevřel jsem ho k úpravě.', 'var(--accent-amber)');
+                        await refresh();
+                        startEdit(data.existing.id);
+                    }
+                }
+            } else {
+                localStorage.setItem(NAMES_KEY, names);
+                if (data.counts) counts = data.counts;
+                say(editingId ? '✅ Změny uloženy.' : '✅ Výraz „' + text + '“ je ve slovníku.', 'var(--accent-green)');
+                resetForm();
+                await refresh();
+                document.getElementById('word').focus();
+            }
+        } catch (e) {
+            say('Nepodařilo se uložit — bez spojení se serverem.', 'var(--accent-red)');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    document.getElementById('names').value = localStorage.getItem(NAMES_KEY) || '';
+    document.getElementById('names').addEventListener('change', e => {
+        if (e.target.value.trim()) localStorage.setItem(NAMES_KEY, e.target.value.trim());
+    });
+    document.getElementById('save').addEventListener('click', save);
+    document.getElementById('cancel-edit').addEventListener('click', () => { resetForm(); say('', ''); });
+    document.getElementById('word').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+
+    deviceId();
+    renderTasks();
+    refresh();
+    setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 30000);
+</script>
+</body>
+</html>

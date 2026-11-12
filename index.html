@@ -551,7 +551,7 @@
                 Přidejte vlastní výraz — ve hře se losují přednostně výrazy ostatních týmů.
             </p>
             <div id="dict-counts-setup" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
-            <button class="btn btn-secondary" onclick="openDictModal()" style="width: 100%;">
+            <button class="btn btn-secondary" onclick="openWordPage()" style="width: 100%;">
                 <i class="fa-solid fa-plus"></i> Přidat výraz do slovníku
             </button>
             <div id="dict-status-setup" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.6rem;"></div>
@@ -691,57 +691,6 @@
             <button class="btn btn-secondary" onclick="closeSettingsModal()" style="flex: 1;">Zavřít</button>
             <button class="btn btn-primary" onclick="saveSettingsModal()" style="flex: 1;">Uložit</button>
         </div>
-    </div>
-</div>
-
-<!-- Modal: vkládání výrazů do společného slovníku -->
-<div id="dict-modal" class="modal-overlay">
-    <div class="glass-panel" style="width: 100%; max-width: 460px; background: #1e293b; max-height: 92vh; overflow-y: auto;">
-        <h3 style="font-size: 1.2rem; margin-bottom: 0.35rem;"><i class="fa-solid fa-book-open"></i> Nový výraz do slovníku</h3>
-        <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 1rem;">Výraz se uloží do společné databáze a může ho dostat jiný tým.</p>
-
-        <div id="dict-counts" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;"></div>
-
-        <form id="dict-form" onsubmit="submitDictEntry(event)">
-            <div class="form-group">
-                <label for="dict-names">Vaše jména</label>
-                <input type="text" id="dict-names" placeholder="Např. Kuba a Terka" maxlength="60" required>
-            </div>
-            <div class="form-group">
-                <label for="dict-text">Výraz</label>
-                <input type="text" id="dict-text" placeholder="Např. Prasklá pneumatika" maxlength="80" required>
-            </div>
-            <div class="form-group">
-                <label>Vhodnost pro disciplíny</label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="dict-task-desc" checked>
-                    <span><i class="fa-solid fa-comment" style="color: var(--accent-blue);"></i> Popis</span>
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="dict-task-draw">
-                    <span><i class="fa-solid fa-palette" style="color: var(--accent-purple);"></i> Kreslení</span>
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="dict-task-mime">
-                    <span><i class="fa-solid fa-person-walking" style="color: var(--accent-amber);"></i> Pantomima</span>
-                </label>
-            </div>
-            <div class="form-group">
-                <label>Obtížnost</label>
-                <div class="score-pill-group" id="dict-pts-group">
-                    <div class="pill-btn" onclick="setDictPts(1, this)">1 b</div>
-                    <div class="pill-btn active" onclick="setDictPts(2, this)">2 b</div>
-                    <div class="pill-btn" onclick="setDictPts(3, this)">3 b</div>
-                </div>
-            </div>
-            <div id="dict-msg" style="font-size: 0.85rem; margin-bottom: 0.75rem; min-height: 1.2rem;"></div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button type="button" class="btn btn-secondary" onclick="closeDictModal()" style="flex: 1;">Zavřít</button>
-                <button type="submit" class="btn btn-primary" id="dict-submit" style="flex: 1;">
-                    <i class="fa-solid fa-check"></i> Uložit výraz
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -988,66 +937,8 @@
         return sharedState;
     }
 
-    function openDictModal() {
-        document.getElementById('dict-names').value = localStorage.getItem(NAMES_KEY) || '';
-        document.getElementById('dict-msg').textContent = '';
-        document.getElementById('dict-modal').classList.add('active');
-        renderDictCounters();
-        refreshDictionary();
-    }
-
-    function closeDictModal() {
-        document.getElementById('dict-modal').classList.remove('active');
-    }
-
-    let dictPts = 2;
-    function setDictPts(value, el) {
-        dictPts = value;
-        document.querySelectorAll('#dict-pts-group .pill-btn').forEach(b => b.classList.remove('active'));
-        if (el) el.classList.add('active');
-    }
-
-    async function submitDictEntry(ev) {
-        ev.preventDefault();
-        const msg = document.getElementById('dict-msg');
-        const names = document.getElementById('dict-names').value.trim();
-        const text = document.getElementById('dict-text').value.trim();
-        const tasks = ['desc', 'draw', 'mime'].filter(t => document.getElementById('dict-task-' + t).checked);
-
-        const say = (txt, color) => { msg.style.color = color; msg.textContent = txt; };
-
-        if (!names) return say('Vyplňte prosím pole „Vaše jména“.', 'var(--accent-amber)');
-        if (!text) return say('Vyplňte prosím pole „Výraz“.', 'var(--accent-amber)');
-        if (!tasks.length) return say('Zaškrtněte alespoň jednu disciplínu.', 'var(--accent-amber)');
-
-        const btn = document.getElementById('dict-submit');
-        btn.disabled = true;
-        say('Ukládám…', '#94a3b8');
-        try {
-            const res = await fetch(DICT_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ names: names, text: text, tasks: tasks, pts: dictPts, deviceId: getDeviceId() })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                const why = (data && (data.error || data.detail)) || ('HTTP ' + res.status);
-                say('Nepodařilo se uložit: ' + why, 'var(--accent-red)');
-            } else {
-                localStorage.setItem(NAMES_KEY, names);
-                if (data.word && data.word.id) addOwnId(data.word.id);
-                document.getElementById('dict-text').value = '';
-                document.getElementById('dict-text').focus();
-                if (data.counts) sharedCounts = data.counts;
-                say('✅ Výraz „' + text + '“ je ve společném slovníku.', 'var(--accent-green)');
-                playBeep(880, 'sine', 0.08);
-                refreshDictionary();
-            }
-        } catch (e) {
-            say('Nepodařilo se uložit: bez spojení se serverem.', 'var(--accent-red)');
-        } finally {
-            btn.disabled = false;
-        }
+    function openWordPage() {
+        window.location.href = 'pridat.html';
     }
 
 
@@ -1216,6 +1107,22 @@
     }
 
     /* ── Losování výrazu: 1) výrazy ostatních, 2) vlastní, 3) zabudovaný slovník ── */
+    function pointsFor(word, task) {
+        if (word && word.points && word.points[task]) return word.points[task];
+        if (word && word.pts) return word.pts;          // starší záznamy
+        return 2;
+    }
+
+    function makeWord(source, task) {
+        return {
+            w: source.text,
+            pts: pointsFor(source, task),
+            authors: source.names || null,
+            id: source.id,
+            source: 'children'
+        };
+    }
+
     function pickWord(task) {
         const pick = arr => arr[Math.floor(Math.random() * arr.length)];
         const mine = getDeviceId();
@@ -1226,15 +1133,15 @@
         if (others.length) {
             const w = pick(others);
             usedSharedIds.add(w.id);
-            return { w: w.text, pts: w.pts, authors: w.names, id: w.id, source: 'children' };
+            return makeWord(w, task);
         }
 
-        // 2) vlastní výrazy (stejné zařízení / stejná jména)
+        // 2) vlastní výrazy (stejné zařízení), až když došly cizí
         const own = suitable.filter(w => !usedSharedIds.has(w.id));
         if (own.length) {
             const w = pick(own);
             usedSharedIds.add(w.id);
-            return { w: w.text, pts: w.pts, authors: w.names, id: w.id, source: 'children' };
+            return makeWord(w, task);
         }
 
         // 3) zabudovaný univerzální slovník
@@ -1248,27 +1155,39 @@
         // všechno vyčerpáno — začni znovu od začátku (ať hra nespadne)
         usedSharedIds.clear();
         usedBuiltinKeys.clear();
-        const again = suitable.length
-            ? { w: suitable[0].text, pts: suitable[0].pts, authors: suitable[0].names, id: suitable[0].id, source: 'children' }
-            : pick(WORDS_DB.filter(x => x.tasks.includes(task)) || WORDS_DB);
-        if (again.id) usedSharedIds.add(again.id);
-        else usedBuiltinKeys.add(again.w);
-        return again;
+        if (suitable.length) {
+            const w = suitable[0];
+            usedSharedIds.add(w.id);
+            return makeWord(w, task);
+        }
+        const x = pick(WORDS_DB.filter(y => y.tasks.includes(task)) || WORDS_DB);
+        usedBuiltinKeys.add(x.w);
+        return { w: x.w, pts: x.pts, authors: null, source: 'builtin' };
     }
 
     function renderWordInfo() {
-        document.getElementById('secret-word').textContent = gameState.currentWord.w;
-        const pts = gameState.swappedThisTurn ? Math.max(1, gameState.currentWord.pts - 1) : gameState.currentWord.pts;
+        const cw = gameState.currentWord;
+        document.getElementById('secret-word').textContent = cw.w;
+        const base = cw.pts || 2;
+        const pts = gameState.swappedThisTurn ? Math.max(1, base - 1) : base;
         document.getElementById('secret-points').textContent = `${pts} ${pts === 1 ? 'bod' : (pts < 5 ? 'body' : 'bodů')}`;
 
         const authors = document.getElementById('word-authors');
         if (authors) {
-            if (gameState.currentWord.authors) {
-                authors.textContent = 'Tento výraz navrhli: ' + gameState.currentWord.authors;
+            if (cw.authors) {
+                authors.innerHTML = '<i class="fa-solid fa-pen-nib" style="color: var(--accent-amber);"></i> ' +
+                    'Tento výraz vymyslel tým <b style="color: #fbbf24;">' + escapeHtml(cw.authors) + '</b>';
+                authors.style.fontSize = '1rem';
+                authors.style.fontWeight = '700';
+                authors.style.color = '#e2e8f0';
             } else {
-                authors.textContent = 'Výraz ze zabudovaného slovníku';
+                authors.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8;">Výraz ze zabudovaného slovníku</span>';
             }
         }
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
     function revealSecretWord() {

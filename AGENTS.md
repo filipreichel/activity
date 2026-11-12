@@ -14,11 +14,24 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 
 | Soubor | Co je uvnitř |
 |---|---|
-| `index.html` | celá aplikace — styly, rozhraní, herní logika i volání API (jeden soubor, žádný build) |
-| `api/slovnik.js` | Vercel Serverless Function: `GET` = seznam výrazů + počty, `POST` = zápis nového výrazu |
+| `index.html` | hra — styly, rozhraní, herní logika i volání API (jeden soubor, žádný build) |
+| `pridat.html` | samostatná stránka pro vkládání výrazů (jména, výraz, disciplíny, obtížnost) + seznam vlastních výrazů s úpravou |
+| `prehled.html` | pohled do databáze pro učitele — tabulka tým/výraz/body, sama se obnovuje |
+| `api/slovnik.js` | Vercel Serverless Function: `GET` seznam, `POST` nový výraz, `PATCH` úprava vlastního |
 | `package.json` | jen `engines` + skripty, **žádné závislosti** (Redis se volá přes REST) |
 | `vercel.json` | `outputDirectory: "."` (statický web v kořeni) + `maxDuration` pro funkci |
 | `perlicky/` | druhá hra na stejné doméně: **Perličky češtiny** (týmový kvíz, `/perlicky/`) — viz níže |
+
+## Datový model výrazu
+
+```js
+{ id, text, names, tasks: ['desc','draw'], points: { desc: 1, draw: 3 },
+  deviceId, createdAt, updatedAt }
+```
+
+- **Obtížnost je pro každou disciplínu zvlášť** (`points`), nikdy jedno číslo pro všechny.
+- V UI není nic předvybrané: musí být zaškrtnutá aspoň jedna disciplína a u každé z ní zvolené body.
+- Starší záznamy s jedním `pts` se čtou dál (`normalizeWord` je srovná na `points`).
 
 ## Perličky češtiny (`/perlicky/`)
 
