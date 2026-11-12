@@ -98,6 +98,30 @@
         .empty { font-size: 0.9rem; color: var(--muted); }
         .status { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
         .switch { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+
+        /* ── Vizuální vylepšení pro děti ───────────────────────────────── */
+        body {
+            background:
+                radial-gradient(1100px 520px at 12% -8%, rgba(30, 58, 138, 0.55), transparent 62%),
+                radial-gradient(900px 520px at 108% 4%, rgba(124, 58, 237, 0.35), transparent 58%),
+                radial-gradient(900px 620px at 50% 118%, rgba(14, 165, 233, 0.28), transparent 62%),
+                #0b1220;
+            background-attachment: fixed;
+        }
+        h1 {
+            background: linear-gradient(100deg, #38bdf8, #a855f7 55%, #f472b6);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
+        }
+        .panel { border-color: rgba(148, 163, 184, 0.18); box-shadow: 0 14px 34px -22px rgba(0, 0, 0, 0.95); }
+        .panel:hover { border-color: rgba(56, 189, 248, 0.28); }
+        .btn { border-radius: 999px; }
+        .btn-primary { background: linear-gradient(120deg, #38bdf8, #818cf8 58%, #a855f7); color: #06101f; }
+        .btn-primary:hover { transform: translateY(-2px); }
+        input[type="text"]:focus { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25); }
+        .pill.on { background: linear-gradient(120deg, #38bdf8, #818cf8); border-color: transparent; color: #06101f; }
+        .word { border-radius: 0.9rem; }
+        .chip { border-radius: 999px; }
     </style>
 </head>
 <body>
