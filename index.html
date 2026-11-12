@@ -1499,7 +1499,10 @@
     getDeviceId();               // založí ID zařízení pro rozpoznání vlastních výrazů
     renderSetupTeams();
     refreshDictionary();         // načte společný slovník a počítadla
-    setInterval(refreshDictionary, 15000);   // průběžná aktualizace počítadel na pozadí
+    // průběžná aktualizace počítadel: jen když je stránka vidět (šetří kvótu databáze)
+    setInterval(() => {
+        if (document.visibilityState === 'visible') refreshDictionary();
+    }, 30000);
 </script>
 </body>
 </html>
