@@ -538,16 +538,26 @@ function renderDisplay() {
   else if (v === 'question') app.innerHTML = (S.current && S.current.phase === 'ask') ? viewSolo(true) : viewQuestion(true);
   else if (v === 'reveal') app.innerHTML = viewReveal(true);
   else if (v === 'results') app.innerHTML = viewResults(true);
-  else app.innerHTML = viewWaiting();
+  else app.innerHTML = viewWaiting();   // 'setup' i 'waiting'
   app.innerHTML += `<button class="fs-btn" data-act="fullscreen" title="Celá obrazovka">⛶</button>`;
   window.scrollTo(0, 0);
   fitView();
 }
 
 function viewWaiting() {
+  const teams = (S.teams || []).map((t, i) => {
+    const name = (t.name || '').trim();
+    return `<div class="dteam ${name ? '' : 'empty'}" style="--c:${teamColor(i)}">${name ? esc(name) : 'Tým ' + (i + 1)}</div>`;
+  }).join('');
+
   return `
-  <div class="wrap waiting">
-    <h1 class="waiting-title">Jak si Ypsilone poradíš s touto výzvou?</h1>
+  <div class="wrap dsetup">
+    <div class="dsetup-head">
+      <h1>Perličky češtiny</h1>
+      <p class="dsub">Interaktivní hra o českém jazyce — 5 kategorií, 25 otázek.</p>
+    </div>
+    <div class="dmotiv">Jak si Ypsilone poradíš s touto výzvou?</div>
+    ${teams ? `<div class="dteams">${teams}</div>` : ''}
   </div>`;
 }
 
@@ -613,6 +623,7 @@ function viewSetup() {
 
     <div class="row-actions" style="justify-content:center;margin-top:22px">
       <button class="primary big" data-act="start">Začít hru →</button>
+      <button class="big" data-act="display-open" title="Otevřít okno pro děti na projektor">🖥️ Otevřít projekci</button>
     </div>
     <p class="save-note">Hra se ukládá do prohlížeče — po obnovení stránky pokračujete tam, kde jste skončili.</p>
   </div>`;
@@ -1074,7 +1085,7 @@ document.addEventListener('input', e => {
   const name = e.target.closest('[data-team-name]');
   if (name) {
     const t = teamById(name.dataset.teamName);
-    if (t) { t.name = name.value; save(); }
+    if (t) { t.name = name.value; save(); broadcast(); }   // projekce vidí název po písmenu
     return;
   }
   const players = e.target.closest('[data-team-players]');
@@ -1082,7 +1093,7 @@ document.addEventListener('input', e => {
     const t = teamById(players.dataset.teamPlayers);
     if (t) {
       t.players = players.value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 12);
-      save();
+      save(); broadcast();
     }
   }
 });
@@ -1129,7 +1140,7 @@ window.addEventListener('beforeunload', stopTimer);
     initChannel();
     renderDisplay();
     setInterval(() => {
-      if (document.querySelector('.waiting') && ch) { try { ch.postMessage({ type: 'hello' }); } catch (e) {} }
+      if (ch && !displaySigCache) { try { ch.postMessage({ type: 'hello' }); } catch (e) {} }
     }, 2500);
     return;
   }

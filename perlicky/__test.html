@@ -54,7 +54,18 @@ function displayTests() {
   const send = (view, current, extra) => applyRemote(Object.assign(
     { teams, used: {}, turn: 0, limit: 30, view, current: current || null, timeLeft: 12 }, extra || {}));
 
-  check('čeká na řídicí okno', q('.waiting') !== null);
+  check('čeká na řídicí okno', q('.dsetup') !== null);
+
+  // uvítací obrazovka se jmény týmů, jak je učitel píše
+  send('setup', null, { teams: [
+    { id: 't1', name: 'Nováčci', players: [], score: 0, p: 0 },
+    { id: 't2', name: '', players: [], score: 0, p: 0 }
+  ] });
+  check('úvod: název hry', txt('.dsetup-head h1') === 'Perličky češtiny', txt('.dsetup-head h1'));
+  check('úvod: podtitul', txt('.dsub').includes('5 kategorií, 25 otázek'), txt('.dsub'));
+  check('úvod: motivační text', txt('.dmotiv').includes('Ypsilone'), txt('.dmotiv'));
+  check('úvod: názvy týmů živě', qa('.dteam').length === 2 && txt('.dteam').includes('Nováčci'), qa('.dteam').map(e => e.textContent.trim()).join(' | '));
+  check('úvod: nepojmenovaný tým jako Tým 2', qa('.dteam')[1].classList.contains('empty') && txt('.dteam:last-child') === 'Tým 2', txt('.dteam:last-child'));
 
   send('board');
   check('plán se vykreslí', qa('.tile').length === 25, qa('.tile').length);

@@ -82,6 +82,11 @@ všechny velikosti písma v CSS jsou `calc(clamp(…) * var(--fit, 1))`.
 pozadí (plné barevné bloky dělaly s barevnými týmy nepořádek). Štítky týmů jsou
 jen jemně tónované barvou týmu, **hrající tým má plnou barvu, tmavý obrys a ▶**.
 
+**Úvodní obrazovka projekce:** název hry, podtitul „Interaktivní hra o českém jazyce —
+5 kategorií, 25 otázek.“, motivační „Jak si Ypsilone poradíš s touto výzvou?“ a **živě
+názvy týmů, jak je učitel píše** (input posílá `broadcast()` bez překreslení řídicího
+okna). Projekci lze otevřít už v nastavení tlačítkem „🖥️ Otevřít projekci“.
+
 **Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
 výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).
 Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejném prohlížeči.
