@@ -15,9 +15,9 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 | Soubor | Co je uvnitř |
 |---|---|
 | `index.html` | hra — styly, rozhraní, herní logika i volání API (jeden soubor, žádný build) |
-| `pridat.html` | samostatná stránka pro vkládání výrazů (jména, výraz, disciplíny, obtížnost) + seznam vlastních výrazů s úpravou |
+| `pridat.html` | samostatná stránka pro vkládání výrazů (jména, výraz, disciplíny, obtížnost) + seznam vlastních výrazů s úpravou a vyřazením |
 | `prehled-7c4a91.html` | **dashboard pro učitele** — záložka Hra (živý stav na TV) + záložka Slovník (žebříček a tabulka); **neveřejná adresa, nikam na ni neodkazovat** (`robots.txt` + `noindex`) |
-| `api/slovnik.js` | Vercel Serverless Function: `GET` seznam, `POST` nový výraz, `PATCH` úprava vlastního |
+| `api/slovnik.js` | Vercel Serverless Function: `GET` seznam, `POST` nový výraz, `PATCH` úprava vlastního, `DELETE` vyřazení vlastního |
 | `api/stav.js` | živé stavy VŠECH rozehraných her — klíč `stav:hra:<gameId>` + rejstřík v sorted setu (`POST` snapshot z každého hrajícího zařízení, `GET` všechno pro dashboard, TTL 6 h, stale po 3 min) |
 | `package.json` | jen `engines` + skripty, **žádné závislosti** (Redis se volá přes REST) |
 | `vercel.json` | `outputDirectory: "."` (statický web v kořeni) + `maxDuration` pro funkci |

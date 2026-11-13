@@ -8,6 +8,7 @@
 // GET    → { ok, counts: {desc, draw, mime, total}, words: [...] }
 // POST   → { names, text, tasks[], points{desc,draw,mime}, deviceId }  → nový výraz
 // PATCH  → { id, deviceId, …stejné položky }                          → úprava vlastního
+// DELETE → { id, deviceId }                                           → smazání vlastního
 //
 // Obtížnost je pro každou disciplínu zvlášť: points = { desc: 1, draw: 3 }.
 
@@ -161,7 +162,7 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { ok: true, counts: countByTask(words), words: words });
     }
 
-    if (req.method === 'POST' || req.method === 'PATCH') {
+    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
       let body = req.body;
       if (typeof body === 'string') {
         try { body = JSON.parse(body); } catch (e) { body = null; }
@@ -215,6 +216,21 @@ module.exports = async function handler(req, res) {
         return send(res, 201, { ok: true, word: word, counts: countByTask(words.concat([word])) });
       }
 
+      // DELETE — smazání existujícího výrazu, jen z téhož zařízení
+      if (req.method === 'DELETE') {
+        const id = String(body.id || '').trim();
+        const target = words.find((w) => w.id === id);
+        if (!target) {
+          return send(res, 404, { ok: false, error: 'Takový výraz ve slovníku není (mohl ho mezitím někdo smazat).' });
+        }
+        if (target.deviceId !== deviceId) {
+          return send(res, 403, { ok: false, error: 'Mazat lze jen výrazy přidané z tohoto zařízení.' });
+        }
+        await redis(['HDEL', HASH_KEY, id]);
+        const next = words.filter((w) => w.id !== id);
+        return send(res, 200, { ok: true, removed: target, counts: countByTask(next) });
+      }
+
       // PATCH — úprava existujícího výrazu, jen z téhož zařízení
       const id = String(body.id || '').trim();
       const target = words.find((w) => w.id === id);
@@ -244,8 +260,8 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { ok: true, word: updated, counts: countByTask(next) });
     }
 
-    res.setHeader('Allow', 'GET, POST, PATCH');
-    return send(res, 405, { ok: false, error: 'Povolené metody jsou GET, POST a PATCH.' });
+    res.setHeader('Allow', 'GET, POST, PATCH, DELETE');
+    return send(res, 405, { ok: false, error: 'Povolené metody jsou GET, POST, PATCH a DELETE.' });
   } catch (err) {
     return send(res, 502, {
       ok: false,

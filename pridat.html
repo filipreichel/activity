@@ -82,6 +82,7 @@
         .btn-primary { background: var(--accent-blue); color: #0b1220; }
         .btn-secondary { background: rgba(148, 163, 184, 0.15); color: var(--text); border: 1px solid var(--border); }
         .btn-small { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+        .btn-danger { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.35); }
         .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
         .chip {
             display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem;
@@ -275,12 +276,43 @@
                 ${tags}
                 <button class="btn btn-secondary btn-small" style="margin-left: auto;" data-edit="${w.id}">
                     <i class="fa-solid fa-pen"></i> Upravit</button>
+                <button class="btn btn-danger btn-small" data-del="${w.id}" title="Vyřadit ze slovníku">
+                    <i class="fa-solid fa-trash"></i></button>
             </div>`;
         }).join('');
 
         box.querySelectorAll('[data-edit]').forEach(b => {
             b.addEventListener('click', () => startEdit(b.dataset.edit));
         });
+        box.querySelectorAll('[data-del]').forEach(b => {
+            b.addEventListener('click', () => removeWord(b.dataset.del, b));
+        });
+    }
+
+    async function removeWord(id, btn) {
+        const w = words.find(x => x.id === id);
+        if (!w) return;
+        if (!confirm('Vyřadit výraz „' + w.text + '“ ze slovníku? Už se nebude losovat.')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch(API, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, deviceId: deviceId() })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                say(data.error || ('Nepodařilo se smazat (HTTP ' + res.status + ').'), 'var(--accent-red)');
+                btn.disabled = false;
+                return;
+            }
+            if (editingId === id) resetForm();
+            say('🗑️ Výraz „' + w.text + '“ je vyřazený ze slovníku.', 'var(--accent-green)');
+            await refresh();
+        } catch (e) {
+            say('Nepodařilo se smazat — bez spojení se serverem.', 'var(--accent-red)');
+            btn.disabled = false;
+        }
     }
 
     function escapeHtml(s) {
