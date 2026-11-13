@@ -222,7 +222,7 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { ok: true, counts: countByTask(words), words: words });
     }
 
-    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+    if (req.method === 'POST' || req.method === 'PATCH') {
       let body = req.body;
       if (typeof body === 'string') {
         try { body = JSON.parse(body); } catch (e) { body = null; }
@@ -274,21 +274,6 @@ module.exports = async function handler(req, res) {
 
         await redis(['HSET', HASH_KEY, word.id, JSON.stringify(word)]);
         return send(res, 201, { ok: true, word: word, counts: countByTask(words.concat([word])) });
-      }
-
-      // DELETE — smazání existujícího výrazu, jen z téhož zařízení
-      if (req.method === 'DELETE') {
-        const id = String(body.id || '').trim();
-        const target = words.find((w) => w.id === id);
-        if (!target) {
-          return send(res, 404, { ok: false, error: 'Takový výraz ve slovníku není (mohl ho mezitím někdo smazat).' });
-        }
-        if (target.deviceId !== deviceId) {
-          return send(res, 403, { ok: false, error: 'Mazat lze jen výrazy přidané z tohoto zařízení.' });
-        }
-        await redis(['HDEL', HASH_KEY, id]);
-        const next = words.filter((w) => w.id !== id);
-        return send(res, 200, { ok: true, removed: target, counts: countByTask(next) });
       }
 
       // PATCH — úprava existujícího výrazu, jen z téhož zařízení
