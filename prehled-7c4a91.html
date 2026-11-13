@@ -186,6 +186,20 @@
             .g-word { font-size: 3.6cqmin; }
         }
         .games.dense { overflow-y: auto; align-content: start; }
+        .del-col { width: 4.5rem; text-align: center; }
+        .del-btn {
+            font: inherit; font-size: 0.85rem; line-height: 1; cursor: pointer;
+            width: 1.9rem; height: 1.9rem; border-radius: 50%;
+            background: rgba(239, 68, 68, 0.12); color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+        .del-btn:hover { background: rgba(239, 68, 68, 0.28); }
+        .g-kill {
+            font: inherit; font-size: clamp(9px, 2.2cqmin, 18px); line-height: 1; cursor: pointer;
+            margin-left: 1cqmin; padding: 0.4cqmin 1cqmin; border-radius: 50%;
+            background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .g-kill:hover { background: rgba(239, 68, 68, 0.3); }
 
         /* Mobil: pod sebe */
         @media (max-width: 760px) {
@@ -260,6 +274,7 @@
                     <th data-sort="mime">Pantomima <span class="arrow">↕</span></th>
                     <th data-sort="created">Přidáno <span class="arrow">↕</span></th>
                     <th data-sort="updated">Upraveno <span class="arrow">↕</span></th>
+                    <th class="del-col">Smazat</th>
                 </tr>
             </thead>
             <tbody id="rows"></tbody>
@@ -359,6 +374,7 @@
                 ${cell('desc')}${cell('draw')}${cell('mime')}
                 <td class="when">${fmt(w.createdAt)}</td>
                 <td class="when">${fmt(w.updatedAt)}</td>
+                <td class="del-col"><button class="del-btn" data-id="${w.id}" data-text="${esc(w.text)}" title="Smazat výraz">✕</button></td>
             </tr>`;
         }).join('');
 
@@ -433,6 +449,42 @@
         t.addEventListener('click', () => showTab(t.dataset.tab));
     });
 
+    /* ── smazání výrazu ze slovníku (jedno potvrzení) ── */
+    document.getElementById('rows').addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('.del-btn');
+        if (!btn) return;
+        const text = btn.dataset.text || 'tento výraz';
+        if (!confirm('Smazat výraz „' + text + '“ ze slovníku?\n\nUž se nebude losovat a zmizí z přehledu.')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/slovnik?id=' + encodeURIComponent(btn.dataset.id), { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+            await load();
+        } catch (err) {
+            btn.disabled = false;
+            alert('Smazat se nepodařilo: ' + err.message);
+        }
+    });
+
+    /* ── odebrání zařízení (běhu hry) z přehledu ── */
+    document.getElementById('games').addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('.g-kill');
+        if (!btn) return;
+        const card = btn.closest('.game');
+        const label = card && card.querySelector('.g-label') ? card.querySelector('.g-label').textContent : 'toto zařízení';
+        if (!confirm('Odebrat „' + label + '“ z přehledu?\n\nJen zmizí dlaždice — jakmile zařízení pošle další stav, objeví se znovu.')) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/stav?gameId=' + encodeURIComponent(btn.dataset.game), { method: 'DELETE' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            await loadGames();
+        } catch (err) {
+            btn.disabled = false;
+            alert('Odebrat se nepodařilo: ' + err.message);
+        }
+    });
+
     /* ── živé stavy VŠECH her: dlaždice se zmenšují podle počtu ── */
     function colsFor(n) {
         if (n <= 1) return 1;
@@ -470,6 +522,7 @@
                 <span class="dot ${idle ? 'bad' : 'ok'}"></span>
                 <span class="g-label">${esc(g.label || 'hra')}</span>
                 <span class="g-id">${esc(shortId)} · ${idle ? 'neběží' : age}</span>
+                <button class="g-kill" data-game="${esc(g.gameId || '')}" title="Odebrat zařízení z přehledu">✕</button>
             </div>
             <div class="g-row">
                 <div class="g-team">${cur ? esc(cur.name) : '—'}</div>

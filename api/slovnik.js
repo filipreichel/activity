@@ -106,15 +106,75 @@ function countByTask(words) {
   return counts;
 }
 
-// porovnání bez ohledu na diakritiku, velikost písmen a přebytečné mezery
+// porovnání bez ohledu na diakritiku, velikost písmen, přebytečné mezery a interpunkci
 function normalize(text) {
   return String(text)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+// "kmen" slova: u slov delších než 4 znaky se odřízne koncovka,
+// takže „pneumatika“ a „pneumatiky“ vypadají stejně
+function stem(text) {
+  return normalize(text)
+    .split(' ')
+    .map((w) => (w.length > 4 ? w.slice(0, w.length - 2) : w))
+    .join(' ');
+}
+
+// Levenshteinova vzdálenost s brzkým ukončením (malé výrazy, takže stačí)
+function distance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = new Array(b.length + 1);
+  let cur = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+    }
+    const tmp = prev; prev = cur; cur = tmp;
+  }
+  return prev[b.length];
+}
+
+// najde stejný nebo velmi podobný výraz: překlepy, chybějící diakritika, jiná koncovka
+function findSimilar(text, words, excludeId) {
+  const norm = normalize(text);
+  const base = stem(text);
+  const limit = norm.length < 8 ? 1 : norm.length < 16 ? 2 : 3;
+  let nearest = null;
+  let nearestDist = Infinity;
+
+  for (const w of words) {
+    if (excludeId && w.id === excludeId) continue;
+    const other = normalize(w.text);
+    if (other === norm) return { kind: 'same', word: w };
+    if (stem(w.text) === base) return { kind: 'ending', word: w };
+    const d = distance(norm, other);
+    const ratio = d / Math.max(norm.length, other.length);
+    if (d <= limit && ratio <= 0.25 && d < nearestDist) { nearest = w; nearestDist = d; }
+  }
+  if (nearest) return { kind: 'typo', word: nearest, distance: nearestDist };
+  return null;
+}
+
+function duplicateMessage(found, typed) {
+  const who = found.word.names ? ' (přidal ' + found.word.names + ')' : '';
+  if (found.kind === 'same') return 'Výraz „' + found.word.text + '“ už ve slovníku je' + who + '.';
+  if (found.kind === 'ending') {
+    return 'Už tam je velmi podobný výraz „' + found.word.text + '“' + who + ' — liší se jen koncovkou.';
+  }
+  return 'Možná je to stejný výraz jako „' + found.word.text + '“' + who + ' — překlep nebo chybějící diakritika?';
+}
+
 
 function send(res, status, payload) {
   res.statusCode = status;
@@ -190,13 +250,13 @@ module.exports = async function handler(req, res) {
             error: 'Z tohoto zařízení už je ve slovníku ' + MAX_PER_DEVICE + ' výrazů — to je strop.',
           });
         }
-        const norm = normalize(parsed.text);
-        const dupe = words.find((w) => normalize(w.text) === norm);
-        if (dupe) {
+        const found = findSimilar(parsed.text, words, null);
+        if (found) {
           return send(res, 409, {
             ok: false,
-            error: 'Výraz „' + parsed.text + '“ už ve slovníku je (přidal ' + (dupe.names || 'jiný tým') + ').',
-            existing: dupe,
+            error: found.kind === 'same' ? duplicateMessage(found, parsed.text) : duplicateMessage(found, parsed.text) + ' Zkus jiný výraz.',
+            existing: found.word,
+            similar: found.kind !== 'same',
           });
         }
 
@@ -244,9 +304,10 @@ module.exports = async function handler(req, res) {
       const parsed = readInput(body);
       if (parsed.error) return send(res, 400, { ok: false, error: parsed.error });
 
-      const norm = normalize(parsed.text);
-      const dupe = words.find((w) => w.id !== id && normalize(w.text) === norm);
-      if (dupe) return send(res, 409, { ok: false, error: 'Jiný výraz „' + parsed.text + '“ už ve slovníku je.' });
+      const found = findSimilar(parsed.text, words, id);
+      if (found) {
+        return send(res, 409, { ok: false, error: duplicateMessage(found, parsed.text), existing: found.word, similar: found.kind !== 'same' });
+      }
 
       const updated = Object.assign({}, target, {
         text: parsed.text,
@@ -260,6 +321,32 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { ok: true, word: updated, counts: countByTask(next) });
     }
 
+    if (req.method === 'DELETE') {
+      // Maže buď samo zařízení (musí poslat své deviceId), nebo učitel z přehledu
+      // na neveřejné adrese (bez deviceId).
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (e) { body = null; }
+      }
+      const url = new URL(req.url || '/', 'http://x');
+      const id = String((body && body.id) || url.searchParams.get('id') || '').trim();
+      const deviceId = String((body && body.deviceId) || '').trim().slice(0, 64);
+      if (!id) return send(res, 400, { ok: false, error: 'Chybí ID výrazu, který se má smazat.' });
+
+      const words = toWords(await redis(['HGETALL', HASH_KEY]));
+      const target = words.find((w) => w.id === id);
+      if (!target) {
+        return send(res, 404, { ok: false, error: 'Takový výraz už ve slovníku není (mohl ho mezitím někdo smazat).' });
+      }
+      if (deviceId && target.deviceId !== deviceId) {
+        return send(res, 403, { ok: false, error: 'Mazat lze jen výrazy přidané z tohoto zařízení.' });
+      }
+
+      await redis(['HDEL', HASH_KEY, id]);
+      const next = words.filter((w) => w.id !== id);
+      return send(res, 200, { ok: true, removed: target, deleted: { id: target.id, text: target.text }, counts: countByTask(next) });
+    }
+
     res.setHeader('Allow', 'GET, POST, PATCH, DELETE');
     return send(res, 405, { ok: false, error: 'Povolené metody jsou GET, POST, PATCH a DELETE.' });
   } catch (err) {
@@ -270,3 +357,9 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+// pro testy (na chod API to nemá vliv)
+module.exports.normalize = normalize;
+module.exports.stem = stem;
+module.exports.distance = distance;
+module.exports.findSimilar = findSimilar;

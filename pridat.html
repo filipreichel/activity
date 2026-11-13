@@ -157,7 +157,8 @@
         <div class="hint" style="margin-bottom: 0.85rem;">Vyplň výraz a u disciplín klikni na body (1–3). Kliknutím na stejné body disciplínu zase odznačíš. Platí: aspoň jedna disciplína s body.</div>
 
         <label for="word">Výraz</label>
-        <input type="text" id="word" placeholder="Např. Prasklá pneumatika" maxlength="80" autocomplete="off" style="margin-bottom: 0.85rem;">
+        <input type="text" id="word" placeholder="Např. Prasklá pneumatika" maxlength="80" autocomplete="off" style="margin-bottom: 0.35rem;">
+        <div id="dupe-hint" style="display: none; font-size: 0.78rem; color: var(--accent-amber); margin-bottom: 0.7rem;"></div>
 
         <label>Vhodnost pro disciplíny a obtížnost</label>
         <div id="tasks"></div>
@@ -377,6 +378,7 @@
         }
         renderCounts();
         renderMine();
+        if (document.getElementById('word').value.trim()) checkDuplicate();
     }
 
     async function save() {
@@ -445,6 +447,52 @@
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('cancel-edit').addEventListener('click', () => { resetForm(); say('', ''); });
     document.getElementById('word').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+
+    // stejná logika jako na serveru: diakritika, překlepy i jiné koncovky
+    function normText(t) {
+        return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function stemText(t) {
+        return normText(t).split(' ').map(w => w.length > 4 ? w.slice(0, w.length - 2) : w).join(' ');
+    }
+    function lev(a, b) {
+        if (a === b) return 0;
+        if (!a.length || !b.length) return Math.max(a.length, b.length);
+        let prev = [...Array(b.length + 1).keys()], cur = [];
+        for (let i = 1; i <= a.length; i++) {
+            cur = [i];
+            for (let j = 1; j <= b.length; j++) {
+                cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+            }
+            prev = cur;
+        }
+        return prev[b.length];
+    }
+    function similarWord(text) {
+        const n = normText(text);
+        if (n.length < 2) return null;
+        const base = stemText(text);
+        const limit = n.length < 8 ? 1 : n.length < 16 ? 2 : 3;
+        let best = null, bestD = Infinity;
+        for (const w of words) {
+            if (editingId && w.id === editingId) continue;
+            const other = normText(w.text);
+            if (other === n || stemText(w.text) === base) return w;
+            const d = lev(n, other);
+            if (d <= limit && d < bestD) { best = w; bestD = d; }
+        }
+        return best;
+    }
+    function checkDuplicate() {
+        const hint = document.getElementById('dupe-hint');
+        const text = document.getElementById('word').value.trim();
+        const hit = text.length > 1 ? similarWord(text) : null;
+        if (!hit) { hint.style.display = 'none'; hint.textContent = ''; return; }
+        hint.style.display = 'block';
+        hint.textContent = '⚠️ Velmi podobný výraz už ve slovníku je: „' + hit.text + '“' + (hit.names ? ' (' + hit.names + ')' : '') + '.';
+    }
+    document.getElementById('word').addEventListener('input', checkDuplicate);
 
     deviceId();
     renderTasks();
