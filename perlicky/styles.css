@@ -278,7 +278,7 @@ label.field {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--c);              /* pruh v barvě týmu */
+  background: color-mix(in srgb, var(--c) 32%, #ffffff);  /* jemný pruh v barvě týmu */
   color: #1d1a17;                    /* písmo vždy tmavé */
   border: 1px solid rgba(29, 26, 23, .16);
   border-left: 6px solid rgba(29, 26, 23, .30);
@@ -288,14 +288,16 @@ label.field {
 }
 
 .team-chip.active {
+  background: var(--c);              /* hrající tým má plnou barvu */
   outline: 3px solid #1d1a17;
   outline-offset: 2px;
   box-shadow: 0 10px 22px rgba(29, 26, 23, .28);
   transform: translateY(-2px);
 }
-.team-chip.active .name::before {
-  content: "▶ ";
+.team-chip .now {
   font-size: .8em;
+  font-weight: 900;
+  color: #1d1a17;
 }
 
 .team-chip .name {

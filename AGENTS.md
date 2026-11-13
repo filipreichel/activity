@@ -78,6 +78,10 @@ všechny velikosti písma v CSS jsou `calc(clamp(…) * var(--fit, 1))`.
 - „Zavřít otázku“ nesmí spoléhat na `undo()` — po obnovení stránky je historie
   prázdná a tlačítko nic nedělalo.
 
+**Barvy:** kategorie nesou barvu jen v **textu a spodním proužku** na jednom bílém
+pozadí (plné barevné bloky dělaly s barevnými týmy nepořádek). Štítky týmů jsou
+jen jemně tónované barvou týmu, **hrající tým má plnou barvu, tmavý obrys a ▶**.
+
 **Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
 výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).
 Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejném prohlížeči.

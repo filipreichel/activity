@@ -702,6 +702,7 @@ function viewBoard(disp) {
 
   const chips = S.teams.map((t, i) => `
     <div class="team-chip ${i === S.turn ? 'active' : ''}" style="--c:${teamColor(i)}">
+      ${i === S.turn ? '<span class="now">▶</span>' : ''}
       <div class="name">${esc(t.name)}</div>
       <div class="score ${t.score < 0 ? 'neg' : ''}">${fmt(t.score)}</div>
     </div>`).join('');
