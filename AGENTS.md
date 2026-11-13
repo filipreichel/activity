@@ -107,6 +107,23 @@ Skutečné propojení dvou oken (řídicí → projekce) se ověřuje přes CDP:
 `?role=display` tlačítkem, pak v projekci zkontrolovat, že nemá `.teacher` ani
 `.options li.right` a že jí chodí odpočet.
 
+## Kontrola duplicit ve slovníku
+
+`POST`/`PATCH` porovnává nový výraz se všemi uloženými ve třech úrovních:
+
+1. **stejný** — bez diakritiky, velikosti písmen, mezer a interpunkce (`Prasklá pneumatika` = `praskla pneumatika!`),
+2. **jiná koncovka** — porovnává se kmen slova: u slov nad 4 znaky se odříznou poslední 2 znaky (`pneumatika` = `pneumatiky`),
+3. **překlep** — Levenshteinova vzdálenost ≤ 1 (do 7 znaků), ≤ 2 (do 15), ≤ 3 (delší) a zároveň ≤ 25 % délky, aby krátká slova nedělala falešné shody (`pes` × `les` projde).
+
+Všechny tři případy vrací `409` s hláškou, který výraz je tam podobný a kdo ho přidal.
+`pridat.html` ukazuje stejnou kontrolu **živě při psaní** (žlutá nápověda pod polem).
+Známé omezení: nepravidelné skloňování (`kůň` → `koně`) se nepozná.
+
+## Mazání
+
+- **Výraz** — v přehledu `prehled-7c4a91.html` sloupec „Smazat“ (`DELETE /api/slovnik?id=…`), jedno potvrzení. Ze zařízení lze mazat jen vlastní výraz (posílá `deviceId`), z přehledu bez `deviceId` cokoli.
+- **Zařízení / běh hry** — křížek `✕` na dlaždici v záložce Hra (`DELETE /api/stav?gameId=…`), jedno potvrzení. Dlaždice zmizí; jakmile zařízení pošle další stav, vrátí se.
+
 ## Nasazení
 
 - `git push` do `main` → Vercel sám postaví **produkci**.
