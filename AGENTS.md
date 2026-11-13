@@ -49,7 +49,9 @@ vlastní kolo a lze ji odmítnout · odpovídá tým jako celek, hráči se need
 
 **Průběh otázky:** 1. klik na dlaždici ji jen **označí** (děti na projekci vidí
 „Vybraná otázka“), 2. klik („Zobrazit otázku“) ukáže **jen zadání bez odpovědí
-a bez odpočtu**, 3. klik („Zobrazit odpovědi“) přidá varianty a **spustí odpočet**.
+a bez odpočtu** — celoobrazovková vystředěná karta (`viewSolo`, pruh v barvě
+kategorie), 3. klik („Zobrazit odpovědi“) přidá varianty a **spustí odpočet**.
+Výchozí čas na odpověď je **20 s**, nastavuje se jen v úvodu při zakládání týmů.
 Fáze v `S.current.phase`: `picked → ask → play → (offer → steal) → done`.
 Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů pod nimi.
 
@@ -87,8 +89,8 @@ Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejné
 | `perlicky/data.js` | všech 25 otázek, varianty, správné odpovědi a vysvětlení |
 | `perlicky/app.js` | herní logika, časomíra se zvukem, dvě okna, ukládání |
 | `perlicky/img/` | ilustrace vytáhnuté z prezentace |
-| `perlicky/__test.html` | regresní test řídicího okna (39 kontrol) a projekce (28) |
-| `perlicky/__test-sound.html` | test zvuků, gongu a tónů odpovědí přes stub WebAudio (13 kontrol) |
+| `perlicky/__test.html` | regresní test řídicího okna (52 kontrol) a projekce (30) |
+| `perlicky/__test-sound.html` | test zvuků, gongu a tónů odpovědí přes stub WebAudio (15 kontrol) |
 | `perlicky/__demo.html` | náhled stavů pro screenshoty (`?v=board|picked|question|offer|reveal|results&role=display&m=1`) |
 
 Testy se pouští v prohlížeči proti lokálnímu serveru (nevydávají se, hlídá je `.vercelignore`):
