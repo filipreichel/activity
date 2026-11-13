@@ -80,6 +80,7 @@ function displayTests() {
   check('vybráno: dlaždice zvýrazněná', qa('.tile.picked').length === 1);
   check('vybráno: banner s kategorií', txt('.picked-banner').includes('Vybraná otázka') && txt('.picked-banner').includes('5 000'), txt('.picked-banner'));
   check('vybráno: otázka ještě není vidět', q('.options') === null);
+  check('vybráno: bez pokynu pro učitele', !txt('.picked-banner').toLowerCase().includes('učitel'), txt('.picked-banner'));
 
   const ask = Object.assign({}, picked, { phase: 'ask' });
   send('question', ask);
@@ -106,6 +107,12 @@ function displayTests() {
   check('odhalení: kdo dostal body', txt('.award').includes('Nováci'), txt('.award'));
   check('odhalení: správná varianta zeleně', qa('.options li.right').length === 1);
   check('odhalení: bez tlačítka Pokračovat', q('[data-act="next"]') === null);
+
+  // otevřená otázka: na projekci nesmí být pokyn „posuďte, kdo ji řekl“
+  const openQ = QUESTIONS.find(x => x.options === null);
+  send('reveal', { qid: openQ.id, phase: 'done', respondIdx: 0, askerIdx: 0, offerIdx: null, stealUsed: false, stealLimit: 0, result: { teamId: 't1', pts: 1000, stolen: false } });
+  check('odhalení otevřené otázky: bez pokynu pro učitele', q('.open-note') === null, txt('.qbody').slice(0, 60));
+  check('odhalení otevřené otázky: odpověď vidět', txt('.answer-line').length > 3, txt('.answer-line'));
 
   send('results', null, { used: {} });
   check('výsledky: stupně vítězů', qa('.podium-step').length === 2, qa('.podium-step').length);

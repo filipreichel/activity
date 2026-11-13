@@ -716,7 +716,7 @@ function viewBoard(disp) {
     ? `<div class="turn-banner picked-banner" style="--c:${catById(pickedQ.cat).color}">
          <span class="k">Vybraná otázka</span>
          <b>${esc(catById(pickedQ.cat).name)} · ${fmt(points(pickedQ))}</b>
-         <span class="k" style="margin-left:auto">${disp ? 'učitel teď otázku ukáže' : 'klikni na dlaždici znovu'}</span>
+         ${disp ? '' : '<span class="k" style="margin-left:auto">klikni na dlaždici znovu</span>'}
        </div>`
     : `<div class="turn-banner">
          <span class="k">Na řadě</span><b>${esc(turnText(S.turn))}</b>
@@ -894,7 +894,7 @@ function viewReveal(disp) {
 
   const opts = q.options ? `<ul class="options compact">${q.options.map((o, i) => `
       <li class="${i === q.correct ? 'right' : ''}"><span class="letter">${LETTERS[i]}</span><span>${esc(o)}</span></li>`).join('')}</ul>`
-    : `<div class="open-note" style="margin-top:16px">Správná odpověď je nahoře — posuďte, kdo ji řekl.</div>`;
+    : (disp ? '' : `<div class="open-note" style="margin-top:16px">Správná odpověď je nahoře — posuďte, kdo ji řekl.</div>`);
 
   const imgs = q.imgs || [];
   const gallery = imgs.length
