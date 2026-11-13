@@ -36,11 +36,11 @@ function newState() {
     ],
     used: {},            // qid → { owner: teamId|null, stolen: bool, penalty: teamId|null }
     turn: 0,
-    limit: 30,           // sekundy na odpověď, 0 = bez časomíry
+    limit: 20,           // sekundy na odpověď, 0 = bez časomíry
     sound: 'soft',       // 'off' | 'soft' | 'loud'
     showAnswers: true,   // ukazovat správnou odpověď učitele (přepínač pro všechny otázky)
     peekQid: null,       // „oko“ – ukázat odpověď jen u této jedné otázky
-    timeLeft: 30,        // jen pro projekci
+    timeLeft: 20,        // jen pro projekci
     view: 'setup',
     current: null,
     history: []
@@ -299,7 +299,7 @@ function applyRemote(st) {
   S.teams = st.teams || S.teams;
   S.used = st.used || {};
   S.turn = st.turn || 0;
-  S.limit = st.limit == null ? 30 : st.limit;
+  S.limit = st.limit == null ? 20 : st.limit;
   S.current = st.current || null;
   S.timeLeft = st.timeLeft;
   S.view = st.view || 'board';
@@ -491,8 +491,9 @@ function fitView() {
   const min = IS_DISPLAY ? 0.60 : 0.72;
   let k = IS_DISPLAY ? 1.2 : 1;
   root.style.setProperty('--fit', k.toFixed(3));
+  const tooTall = () => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) > window.innerHeight + 1;
   let guard = 0;
-  while (document.body.scrollHeight > window.innerHeight - 2 && k > min + 0.001 && guard < 26) {
+  while (tooTall() && k > min + 0.001 && guard < 26) {
     k -= 0.035;
     root.style.setProperty('--fit', Math.max(min, k).toFixed(3));
     guard++;
@@ -517,7 +518,7 @@ function render() {
   const v = S.view;
   if (v === 'setup') app.innerHTML = viewSetup();
   else if (v === 'board') app.innerHTML = viewBoard();
-  else if (v === 'question') app.innerHTML = viewQuestion();
+  else if (v === 'question') app.innerHTML = (S.current && S.current.phase === 'ask') ? viewSolo() : viewQuestion();
   else if (v === 'reveal') app.innerHTML = viewReveal();
   else if (v === 'results') app.innerHTML = viewResults();
   app.innerHTML += viewModal();
@@ -534,7 +535,7 @@ function render() {
 function renderDisplay() {
   const v = S.view;
   if (v === 'board') app.innerHTML = viewBoard(true);
-  else if (v === 'question') app.innerHTML = viewQuestion(true);
+  else if (v === 'question') app.innerHTML = (S.current && S.current.phase === 'ask') ? viewSolo(true) : viewQuestion(true);
   else if (v === 'reveal') app.innerHTML = viewReveal(true);
   else if (v === 'results') app.innerHTML = viewResults(true);
   else app.innerHTML = viewWaiting();
@@ -621,6 +622,45 @@ function viewSetup() {
       <button class="primary big" data-act="start">Začít hru →</button>
     </div>
     <p class="save-note">Hra se ukládá do prohlížeče — po obnovení stránky pokračujete tam, kde jste skončili.</p>
+  </div>`;
+}
+
+/* --- otázka bez odpovědí (celá obrazovka, vystředěná) --- */
+
+function viewSolo(disp) {
+  const cur = S.current;
+  const q = qById(cur.qid);
+  const c = catById(q.cat);
+  const img = q.img ? `<figure class="qimg"><img src="${q.img}" alt="obrázek k otázce"></figure>` : '';
+
+  const topbar = disp ? '' : `
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span>Perličky češtiny</div>
+      <div class="spacer"></div>
+      <button class="ghost" data-act="sound" title="Zapnout/vypnout zvuk">${soundIcon()}</button>
+      <button class="ghost" data-act="undo" title="Vrátit poslední krok">↶ Zpět</button>
+      <button class="ghost" data-act="cancel">✕ Zavřít otázku</button>
+    </div>`;
+
+  return `
+  <div class="wrap solo" style="--c:${c.color}">
+    ${topbar}
+    <div class="solo-card">
+      <div class="solo-head">
+        <span class="qcat" style="--c:${c.color}">${esc(c.name)}</span>
+        <span class="qval">${fmt(points(q))}</span>
+      </div>
+      <p class="solo-text">${esc(q.q)}</p>
+      ${img}
+      <div class="solo-foot">
+        <span class="k">Odpovídá</span>
+        <b style="color:${teamColor(cur.respondIdx)}">${esc(teamLabel(cur.respondIdx))}</b>
+      </div>
+      ${disp ? '<div class="solo-hint">odpovědi se právě ukážou</div>' : `
+        <div class="solo-actions">
+          <button class="primary big" data-act="options">${q.options ? 'Zobrazit odpovědi →' : 'Spustit odpočet →'}</button>
+        </div>`}
+    </div>
   </div>`;
 }
 
@@ -1094,7 +1134,7 @@ window.addEventListener('beforeunload', stopTimer);
     S.teams = saved.teams;
     S.used = saved.used || {};
     S.turn = saved.turn || 0;
-    S.limit = saved.limit == null ? 30 : saved.limit;
+    S.limit = saved.limit == null ? 20 : saved.limit;
     S.sound = saved.sound || 'soft';
     S.showAnswers = saved.showAnswers !== false;
     S.current = saved.current || null;

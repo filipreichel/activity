@@ -72,7 +72,7 @@ function displayTests() {
 
   const ask = Object.assign({}, picked, { phase: 'ask' });
   send('question', ask);
-  check('otázka: nejdřív bez odpovědí', qa('.options li').length === 0 && q('.qtext') !== null);
+  check('otázka: nejdřív bez odpovědí', qa('.options li').length === 0 && q('.solo-text') !== null);
   check('otázka: bez odpočtu', q('.tnum') === null);
 
   send('question', Object.assign({}, picked, { phase: 'play' }));
@@ -146,7 +146,7 @@ function controlTests() {
   check('1. klik: tlačítko Zobrazit otázku', q('[data-act="show"]') !== null);
 
   click('[data-act="show"]');
-  check('2. klik: otázka se ukáže', q('.qtext') !== null);
+  check('2. klik: otázka se ukáže', q('.solo-text') !== null, txt('.solo-text').slice(0, 40));
   check('2. klik: bez odpovědí a bez odpočtu', q('.options') === null && q('.tnum') === null && timerHandle === null);
   check('2. klik: tlačítko Zobrazit odpovědi', q('[data-act="options"]') !== null);
   click('[data-act="options"]');

@@ -2,7 +2,7 @@
 // Účel: aplikace se dá nainstalovat na plochu a po prvním načtení se rozjede
 // i bez signálu. API se nikdy nekešuje (slovník musí být vždy čerstvý).
 
-const CACHE = 'yp-shell-v1';
+const CACHE = 'yp-shell-v3';
 const SHELL = [
   './',
   'index.html',

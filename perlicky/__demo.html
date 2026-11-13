@@ -25,7 +25,8 @@
     [QUESTIONS[7].id]: { owner: null, stolen: true, penalty: 't2' },
     [QUESTIONS[14].id]: { owner: 't3', stolen: true, penalty: null }
   };
-  const phase = v === 'picked' ? 'picked' : v === 'offer' ? 'offer' : v === 'reveal' ? 'done' : 'ask';
+  const phase = v === 'picked' ? 'picked' : v === 'offer' ? 'offer' : v === 'reveal' ? 'done'
+    : (v === 'solo' ? 'ask' : 'play');
   const cur = {
     qid, phase,
     respondIdx: 1, askerIdx: 1,
@@ -33,7 +34,8 @@
     stealUsed: false, stealLimit: 15,
     result: v === 'reveal' ? { teamId: null, pts: -2000, loserId: 't2', stolen: true } : null
   };
-  const view = (v === 'question' || v === 'offer' || v === 'reveal') ? 'question' : v === 'picked' ? 'board' : v;
+  const view = (v === 'question' || v === 'offer' || v === 'reveal' || v === 'solo') ? 'question'
+    : v === 'picked' ? 'board' : v;
   S.teams = teams;
   S.used = used;
   S.turn = 1;
@@ -55,8 +57,20 @@
     setTimeout(() => {
       const over = document.documentElement.scrollHeight - window.innerHeight;
       const k = getComputedStyle(document.documentElement).getPropertyValue('--fit').trim();
+      fitView();
+      const afterManual = getComputedStyle(root0 = document.documentElement).getPropertyValue('--fit').trim();
+      const root = document.documentElement;
+      const prev = root.style.getPropertyValue('--fit');
+      root.style.setProperty('--fit', '1');
+      const at1 = document.body.scrollHeight;
+      if (prev) root.style.setProperty('--fit', prev); else root.style.removeProperty('--fit');
+      const card = document.querySelector('.solo-card');
+      const txt = document.querySelector('.solo-text');
+      const cr = card ? card.getBoundingClientRect() : null;
       document.title = (over > 0 ? 'OVERFLOW+' + over : 'FITS ' + window.innerHeight) +
-        ' k=' + k + ' sh=' + document.documentElement.scrollHeight + ' bh=' + document.body.scrollHeight;
+        ' k=' + k + ' afterManual=' + afterManual + ' bodyAt1=' + at1 + ' inner=' + window.innerHeight +
+        (cr ? ' card=' + Math.round(cr.top) + '..' + Math.round(cr.bottom) + ' h=' + Math.round(cr.height) : '') +
+        (txt ? ' font=' + getComputedStyle(txt).fontSize : '');
     }, 1500);
   }
 </script>

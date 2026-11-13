@@ -552,6 +552,9 @@
             padding: 0.6rem 0.9rem; border: 1px dashed rgba(148, 163, 184, 0.35); border-radius: 0.9rem;
         }
         .ios-hint b { color: #cbd5e1; }
+        .live-badge { font-size: 0.72rem; color: #64748b; text-align: center; font-variant-numeric: tabular-nums; }
+        .live-badge.ok { color: var(--accent-green); }
+        .live-badge.bad { color: var(--accent-red); }
         body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
         @media (display-mode: standalone) {
             body {
@@ -680,6 +683,7 @@
         <button id="install-btn" class="btn btn-secondary" style="display: none;">
             <i class="fa-solid fa-mobile-screen-button"></i> Nainstalovat jako aplikaci
         </button>
+        <div id="live-badge" class="live-badge">spojuji s dashboardem…</div>
         <div id="ios-hint" class="ios-hint" style="display: none;">
             V Safari klepni na <b>Sdílet</b> → <b>Přidat na plochu</b> a hra bude jako aplikace.
         </div>
@@ -1614,6 +1618,7 @@
         lastPublish = now;
         const snap = {
             sentAt: now,
+            appVersion: 'v3',
             gameId: getDeviceId(),                       // jeden běh hry = jedno zařízení
             label: gameConfig.teams.slice(0, 4).join(' · ').slice(0, 40),
             phase: document.getElementById('game-view').classList.contains('active') ? 'hra' : 'priprava',
@@ -1630,11 +1635,25 @@
             paused: !!gameState.isPaused,
             targetScore: gameConfig.targetScore
         };
+        const badge = document.getElementById('live-badge');
         fetch('/api/stav', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ state: snap })
-        }).catch(() => { /* dashboard prostě uvidí starší stav */ });
+        }).then((res) => {
+            if (!badge) return;
+            if (res.ok) {
+                badge.className = 'live-badge ok';
+                badge.textContent = '🟢 v3 · dashboard vidí tohle zařízení';
+            } else {
+                badge.className = 'live-badge bad';
+                badge.textContent = '⚠️ dashboard mě nevidí (HTTP ' + res.status + ')';
+            }
+        }).catch(() => {
+            if (!badge) return;
+            badge.className = 'live-badge bad';
+            badge.textContent = '⚠️ dashboard mě nevidí (bez spojení)';
+        });
     }
 
     // Direct Boot
@@ -1682,6 +1701,10 @@
             if (h) h.style.display = 'block';
         }
     })();
+    publishState(true);          // ať je zařízení vidět na dashboardu hned po otevření
+    setInterval(() => {          // heartbeat: dashboard pozná, že je zařízení online
+        if (document.visibilityState === 'visible') publishState(false);
+    }, 8000);
     refreshDictionary();         // načte společný slovník a počítadla
     // průběžná aktualizace počítadel: jen když je stránka vidět (šetří kvótu databáze)
     setInterval(() => {
@@ -1693,6 +1716,17 @@
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').catch(() => {});
         });
+        // když na pozadí vyjde nová verze, jednou se obnov stránku (stará tabulka by jinak běžela dál)
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (reloaded) return;
+            reloaded = true;
+            sessionStorage.setItem('yp_sw_reload', '1');
+            window.location.reload();
+        });
+        if (sessionStorage.getItem('yp_sw_reload') === '1') {
+            sessionStorage.removeItem('yp_sw_reload');
+        }
     }
 </script>
 
