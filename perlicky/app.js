@@ -547,14 +547,7 @@ function renderDisplay() {
 function viewWaiting() {
   return `
   <div class="wrap waiting">
-    <div class="hero">
-      <h1>Perličky češtiny</h1>
-      <p>Projekce je připravená. Hru ovládá řídicí okno — tady se jen zobrazuje.</p>
-    </div>
-    <div class="card">
-      <h2>Co udělat</h2>
-      <p class="hint">Klikněte na tlačítko vpravo dole — okno se roztáhne na celou obrazovku. Pak už na nic nesahejte, hra běží v řídicím okně.</p>
-    </div>
+    <h1 class="waiting-title">Jak si Ypsilone poradíš s touto výzvou?</h1>
   </div>`;
 }
 
@@ -656,7 +649,7 @@ function viewSolo(disp) {
         <span class="k">Odpovídá</span>
         <b style="color:${teamColor(cur.respondIdx)}">${esc(teamLabel(cur.respondIdx))}</b>
       </div>
-      ${disp ? '<div class="solo-hint">odpovědi se právě ukážou</div>' : `
+      ${disp ? '' : `
         <div class="solo-actions">
           <button class="primary big" data-act="options">${q.options ? 'Zobrazit odpovědi →' : 'Spustit odpočet →'}</button>
         </div>`}
@@ -998,6 +991,7 @@ function refreshSoundButtons() {
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
+  if (btn.blur) btn.blur();   // ať Enter nezopakuje naposledy kliknuté tlačítko
   const act = btn.dataset.act;
 
   if (act === 'fullscreen') {
@@ -1095,8 +1089,18 @@ document.addEventListener('input', e => {
 
 document.addEventListener('keydown', e => {
   if (IS_DISPLAY || e.target.tagName === 'INPUT') return;
+
+  // Enter posouvá hru dál — jen mimo chvíli, kdy se rozhoduje „věděl / nevěděl“
+  if (e.key === 'Enter') {
+    if (S.view === 'reveal') { e.preventDefault(); revealDone(); return; }
+    if (S.view === 'board' && S.current && S.current.phase === 'picked') { e.preventDefault(); showQuestion(); return; }
+    if (S.view === 'question' && S.current && S.current.phase === 'ask') { e.preventDefault(); showOptions(); return; }
+    // ve fázi hry Enter nic nedělá (aby omylem nevyhodnotil odpověď)
+    if (S.view === 'question') { e.preventDefault(); return; }
+  }
+
   if (S.view === 'board' && S.current && S.current.phase === 'picked') {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showQuestion(); }
+    if (e.key === ' ') { e.preventDefault(); showQuestion(); }
     return;
   }
   if (S.view !== 'question' || !S.current) return;

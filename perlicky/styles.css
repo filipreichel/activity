@@ -362,9 +362,9 @@ label.field {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: .03em;
-  font-size: calc(clamp(11px, 1.05vw, 16px) * var(--fit, 1));
+  font-size: calc(clamp(13px, 1.35vw, 22px) * var(--fit, 1));
   line-height: 1.2;
-  min-height: 3.4em;
+  min-height: 3.2em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -817,7 +817,7 @@ label.field {
 .display-mode .qtext { font-size: calc(clamp(24px, 3vw, 54px) * var(--fit, 1)); }
 .display-mode .options li { font-size: calc(clamp(19px, 2.2vw, 34px) * var(--fit, 1)); }
 .display-mode .board .tile { font-size: calc(clamp(18px, 2.3vw, 40px) * var(--fit, 1)); }
-.display-mode .cat-head { font-size: calc(clamp(12px, 1.2vw, 19px) * var(--fit, 1)); }
+.display-mode .cat-head { font-size: calc(clamp(14px, 1.6vw, 27px) * var(--fit, 1)); }
 .display-mode .timer { font-size: clamp(20px, 2vw, 30px); }
 .display-mode .timer svg { width: 60px; height: 60px; }
 .display-mode .turnbox .who { font-size: calc(clamp(18px, 2vw, 28px) * var(--fit, 1)); }
@@ -831,7 +831,21 @@ label.field {
 .display-mode .qimg { max-width: min(520px, 100%); max-height: 34vh; }
 .display-mode .qimg img { max-height: 34vh; }
 
-.waiting .card { max-width: 620px; }
+.waiting {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.waiting-title {
+  margin: 0;
+  max-width: 22ch;
+  font-size: calc(clamp(26px, 3.6vw, 68px) * var(--fit, 1));
+  font-weight: 900;
+  line-height: 1.15;
+  color: var(--accent-ink);
+  text-wrap: balance;
+}
 
 .award.lose { background: #fdecea; color: #8f1f0c; }
 

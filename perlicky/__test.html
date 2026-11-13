@@ -234,6 +234,23 @@ function controlTests() {
   check('zavřít otázku: zpět na plán', q('.board') !== null && q('.qview') === null, txt('.board-foot'));
   check('zavřít otázku: dlaždice zůstala volná', qa('.tile.done').length === before);
 
+  /* 8c. Enter posouvá hru dál */
+  const ent = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const tEnt = qa('.tile').find(t => !t.classList.contains('done'));
+  tEnt.click();
+  check('Enter: dlaždice označená', qa('.tile.picked').length === 1);
+  ent();
+  check('Enter: otevře otázku', q('.solo-text') !== null);
+  ent();
+  check('Enter: ukáže odpovědi', qa('.options li').length > 0 || q('.open-note') !== null);
+  check('Enter: spustí odpočet', timerHandle !== null);
+  ent();
+  check('Enter ve hře nic nedělá', timerHandle !== null && q('[data-act="right"]') !== null);
+  click('[data-act="right"]');
+  check('vyhodnoceno', q('[data-act="next"]') !== null);
+  ent();
+  check('Enter: zpět na plán', q('.board') !== null);
+
   /* 9. nová hra se ptá */
   click('[data-act="new-game"]');
   check('nová hra: dialog s volbou', q('.overlay .dialog') !== null && q('[data-act="new-same"]') !== null && q('[data-act="new-fresh"]') !== null);
