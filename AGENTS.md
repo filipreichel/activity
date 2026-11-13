@@ -152,6 +152,12 @@ i velikost písma se počítají z počtu her (1 hra = obrovská karta, 30 her =
 karty používají container queries (`cqmin`), takže text roste a zmenšuje se s kartou.
 Když je stav starší než 20 s, karta zšedne a hlásí „neběží".
 
+Zařízení se hlásí **hned po otevření stránky a pak každých 8 s** (heartbeat) — i když se
+ještě nehraje, takže na dashboardu je vidět, kolik telefonů je připojených. Pod tlačítkem
+instalace je indikátor `🟢 v3 · dashboard vidí tohle zařízení` (nebo `⚠️ dashboard mě nevidí`);
+když tam není, běží na zařízení stará verze stránky — obnovit. Service worker je `yp-shell-v3`
+a po aktivaci nové verze stránku sám obnoví (`controllerchange`).
+
 ## Obrazovka hry
 
 - Výsledková tlačítka (Uhádnuto / Neuhádnuto) jsou **zamčená, dokud se výraz neodhalí**.
