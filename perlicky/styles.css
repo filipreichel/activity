@@ -391,6 +391,10 @@ label.field {
   box-shadow: none;
   border-color: transparent;
 }
+
+/* dlaždice jsou <button disabled>, aby na projekci nešly klikat — ale nesmí
+   zdědit opacity .45 z pravidla pro vypnutá tlačítka (dělalo vybledlý plán) */
+.board .tile { opacity: 1; }
 .tile.done .val { text-decoration: line-through; text-decoration-thickness: 2px; }
 .tile.done .owner {
   position: absolute;
@@ -823,13 +827,19 @@ label.field {
 /* ---------------- dvoukrokové vybrání otázky ---------------- */
 
 .tile.picked {
-  background: #fff4e0;
-  border-color: var(--accent);
-  animation: pickPulse 1.6s ease-in-out infinite;
+  background: #f7b733;
+  color: #2a1a05 !important;
+  border: 2px solid #c2690a !important;
+  animation: pickPulse 1.5s ease-in-out infinite;
+}
+.display-mode .board .tile.picked {
+  background: #f7b733;
+  color: #2a1a05;
+  border: 2px solid #c2690a;
 }
 @keyframes pickPulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(243, 150, 15, .35), 0 8px 22px rgba(243, 150, 15, .2); }
-  50%      { box-shadow: 0 0 0 9px rgba(243, 150, 15, .10), 0 8px 22px rgba(243, 150, 15, .2); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(243, 150, 15, .45), 0 8px 22px rgba(243, 150, 15, .25); }
+  50%      { box-shadow: 0 0 0 12px rgba(243, 150, 15, .12), 0 8px 22px rgba(243, 150, 15, .25); }
 }
 .tile .pick-tag {
   position: absolute;
@@ -839,8 +849,8 @@ label.field {
   font-size: 9px;
   letter-spacing: .12em;
   text-transform: uppercase;
-  font-weight: 800;
-  color: var(--accent-ink);
+  font-weight: 900;
+  color: #4a2800;
 }
 .picked-banner { border-left: 5px solid var(--c); background: #fff6e8; }
 

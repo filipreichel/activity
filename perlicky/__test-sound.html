@@ -72,6 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     window.__tones = []; window.__starts = 0;
     openQuestion(QUESTIONS[0].id);
     showQuestion();
+    showOptions();
     await sleep(3800);
     check('odpočet tiká', window.__starts >= 3, 'startů=' + window.__starts);
     check('gong na nule', window.__tones.some(f => f > 150 && f < 200), JSON.stringify(window.__tones.slice(-6)));
@@ -81,7 +82,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // 3. bez časomíry se netiká
     S.limit = 0;
     window.__starts = 0;
-    render(); openQuestion(QUESTIONS[1].id); showQuestion();
+    render(); openQuestion(QUESTIONS[1].id); showQuestion(); showOptions();
     await sleep(1500);
     check('bez časomíry žádný tón', window.__starts === 0, 'startů=' + window.__starts);
     check('bez časomíry není odpočet', q('.timer') === null || q('.timer').style.display === 'none');
@@ -91,7 +92,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     S.view = 'board';
     render();
     window.__tones = [];
-    openQuestion(QUESTIONS[2].id); showQuestion();
+    openQuestion(QUESTIONS[2].id); showQuestion(); showOptions();
     await sleep(2600);   // 7 → 6 (tichý tik) → 5 (jiný tón)
     const hasQuiet = window.__tones.includes(880);
     const hasUrgent = window.__tones.includes(1320);

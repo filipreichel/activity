@@ -72,7 +72,11 @@ function displayTests() {
 
   const ask = Object.assign({}, picked, { phase: 'ask' });
   send('question', ask);
-  check('otázka: varianty vidět', qa('.options li').length === 5, qa('.options li').length);
+  check('otázka: nejdřív bez odpovědí', qa('.options li').length === 0 && q('.qtext') !== null);
+  check('otázka: bez odpočtu', q('.tnum') === null);
+
+  send('question', Object.assign({}, picked, { phase: 'play' }));
+  check('odpovědi: varianty vidět', qa('.options li').length === 5, qa('.options li').length);
   check('otázka: správná odpověď SKRYTÁ', qa('.options li.right').length === 0);
   check('otázka: bez panelu pro učitele', q('.teacher') === null);
   check('otázka: bez tlačítek Věděl/Nevěděl', q('[data-act="right"]') === null && q('[data-act="wrong"]') === null);
@@ -143,6 +147,11 @@ function controlTests() {
 
   click('[data-act="show"]');
   check('2. klik: otázka se ukáže', q('.qtext') !== null);
+  check('2. klik: bez odpovědí a bez odpočtu', q('.options') === null && q('.tnum') === null && timerHandle === null);
+  check('2. klik: tlačítko Zobrazit odpovědi', q('[data-act="options"]') !== null);
+  click('[data-act="options"]');
+  check('3. klik: odpovědi vidět', qa('.options li').length === 3 && q('.tnum') !== null);
+  check('3. klik: odpočet běží', timerHandle !== null);
   check('řídicí okno: správná varianta zvýrazněná', qa('.options li.right').length === 1);
   check('řídicí okno: panel pro učitele dole', q('.teacher') !== null);
   check('panel pro učitele je až za otázkou',
@@ -186,7 +195,7 @@ function controlTests() {
   /* 6. krádež vyšla — polovina a poloviční čas */
   const t2 = qa('.tile').find(t => !t.classList.contains('done'));
   const q2 = QUESTIONS.find(x => x.id === t2.dataset.qid);
-  t2.click(); click('[data-act="show"]');
+  t2.click(); click('[data-act="show"]'); click('[data-act="options"]');
   click('[data-act="wrong"]');
   click('[data-act="steal-yes"]');
   check('krádež běží', q('[data-act="right"]') !== null, txt('.turnbox .who'));
@@ -200,7 +209,7 @@ function controlTests() {
   /* 7. krádež nevyšla — mínus polovina */
   const t3 = qa('.tile').find(t => !t.classList.contains('done'));
   const q3 = QUESTIONS.find(x => x.id === t3.dataset.qid);
-  t3.click(); click('[data-act="show"]');
+  t3.click(); click('[data-act="show"]'); click('[data-act="options"]');
   click('[data-act="wrong"]');
   click('[data-act="steal-yes"]');
   const stealerName = txt('.turnbox .who').split(' — ')[0];
@@ -214,6 +223,15 @@ function controlTests() {
   check('undo: zpět do otázky', q('.turnbox') !== null && q('.award') === null, txt('.turnbox .lbl'));
   click('[data-act="wrong"]');   // znovu nevyšla
   click('[data-act="next"]');
+
+  /* 8b. zavření otázky tlačítkem v liště */
+  const before = qa('.tile.done').length;
+  const notUsed = qa('.tile').find(t => !t.classList.contains('done'));
+  notUsed.click();
+  if (q('[data-act="show"]')) click('[data-act="show"]');
+  click('[data-act="cancel"]');
+  check('zavřít otázku: zpět na plán', q('.board') !== null && q('.qview') === null, txt('.board-foot'));
+  check('zavřít otázku: dlaždice zůstala volná', qa('.tile.done').length === before);
 
   /* 9. nová hra se ptá */
   click('[data-act="new-game"]');
@@ -232,6 +250,7 @@ function controlTests() {
     if (!t) break;
     t.click();
     if (q('[data-act="show"]')) click('[data-act="show"]');
+    if (q('[data-act="options"]')) click('[data-act="options"]');
     if (q('[data-act="wrong"]')) click('[data-act="wrong"]');
     if (q('[data-act="steal-no"]')) click('[data-act="steal-no"]');
     if (q('[data-act="next"]')) click('[data-act="next"]');

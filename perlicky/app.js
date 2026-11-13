@@ -350,12 +350,21 @@ function showQuestion() {
   cur.phase = 'ask';
   S.view = 'question';
   render();
+}
+
+/* druhá fáze: teprve teď se ukážou odpovědi a rozběhne odpočet */
+function showOptions() {
+  const cur = S.current;
+  if (!cur || cur.phase !== 'ask') return;
+  snapshot('zobrazení odpovědí');
+  cur.phase = 'play';
+  render();
   startTimer();
 }
 
 function judge(ok) {
   const cur = S.current;
-  if (!cur || cur.phase === 'done' || cur.phase === 'offer' || cur.phase === 'picked') return;
+  if (!cur || cur.phase === 'done' || cur.phase === 'offer' || cur.phase === 'picked' || cur.phase === 'ask') return;
   snapshot(ok ? 'správná odpověď' : 'chybná odpověď');
 
   const q = qById(cur.qid);
@@ -442,7 +451,9 @@ function revealDone() {
 function cancelQuestion() {
   if (!confirm('Zavřít otázku bez bodů? Otázka zůstane na plánu.')) return;
   stopTimer();
-  undo(true);
+  S.current = null;
+  S.view = 'board';
+  save(); render();
 }
 
 function undo(silent) {
@@ -514,7 +525,7 @@ function render() {
   save(); broadcast();
   // překreslení (zvuk, odpovědi, oko) nesmí zastavit odpočet
   if (wasRunning && left > 0 && S.view === 'question' && S.current &&
-      S.current.phase !== 'done' && S.current.phase !== 'picked') {
+      (S.current.phase === 'play' || S.current.phase === 'steal')) {
     startTimerFrom(left);
   }
   fitView();
@@ -702,19 +713,30 @@ function viewQuestion(disp) {
   const c = catById(q.cat);
   const stealing = cur.phase === 'steal';
   const offering = cur.phase === 'offer';
+  const ready = cur.phase === 'ask';
   const lim = currentLimit();
 
   const showAns = !disp && (S.showAnswers || S.peekQid === cur.qid);
 
-  const opts = q.options ? `<ul class="options">${q.options.map((o, i) => {
+  const opts = ready ? '' : (q.options ? `<ul class="options">${q.options.map((o, i) => {
     const isRight = showAns && q.correct === i;
     return `<li class="${isRight ? 'right' : ''}"><span class="letter">${LETTERS[i]}</span><span>${esc(o)}</span></li>`;
   }).join('')}</ul>`
-    : `<div class="open-note">✍️ Odpověď se říká nahlas — správnou variantu uvidíte po vyhodnocení.</div>`;
+    : `<div class="open-note">✍️ Odpověď se říká nahlas — správnou variantu uvidíte po vyhodnocení.</div>`);
 
   const img = q.img ? `<figure class="qimg"><img src="${q.img}" alt="obrázek k otázce"></figure>` : '';
 
-  const box = `<div class="turnbox ${stealing ? 'steal' : ''}" style="--c:${teamColor(cur.respondIdx)}">
+  const box = ready
+    ? `<div class="turnbox ready" style="--c:${teamColor(cur.respondIdx)}">
+        <div>
+          <div class="lbl">${q.options ? 'Otázka je na obrazovce — odpovědi ještě nejsou vidět' : 'Otázka je na obrazovce'}</div>
+          <div class="who">${esc(teamLabel(cur.respondIdx))}</div>
+        </div>
+        ${disp ? '' : `<div class="actions">
+          <button class="primary" data-act="options">${q.options ? 'Zobrazit odpovědi →' : 'Spustit odpočet →'}</button>
+        </div>`}
+      </div>`
+    : `<div class="turnbox ${stealing ? 'steal' : ''}" style="--c:${teamColor(cur.respondIdx)}">
       <div>
         <div class="lbl">${stealing ? `Krádež za ${fmt(halfPoints(q))} · čas ${lim} s — odpovídá` : 'Odpovídá'}</div>
         <div class="who">${esc(teamLabel(cur.respondIdx))}</div>
@@ -750,7 +772,7 @@ function viewQuestion(disp) {
     <div class="qhead">
       <span class="qcat" style="--c:${c.color}">${esc(c.name)}</span>
       <span class="qval">${fmt(points(q))}</span>
-      ${timerMarkup()}
+      ${ready ? '' : timerMarkup()}
       ${disp ? '' : `<button class="eye ${showAns ? '' : 'off'}" data-act="peek" title="Ukázat správnou odpověď jen u této otázky">👁</button>`}
     </div>
 
@@ -989,6 +1011,7 @@ document.addEventListener('click', e => {
   }
   if (act === 'open') { Sfx.unlock(); openQuestion(btn.dataset.qid); return; }
   if (act === 'show') { showQuestion(); return; }
+  if (act === 'options') { showOptions(); return; }
   if (act === 'answers') { S.showAnswers = !S.showAnswers; S.peekQid = null; save(); render(); return; }
   if (act === 'peek') {
     const c2 = S.current;
@@ -1038,6 +1061,11 @@ document.addEventListener('keydown', e => {
   if (S.view !== 'question' || !S.current) return;
   const k = e.key.toLowerCase();
   const phase = S.current.phase;
+  if (phase === 'ask') {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showOptions(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelQuestion(); }
+    return;
+  }
   if (k === 's' || k === 'arrowright') { e.preventDefault(); if (phase !== 'offer') judge(true); }
   else if (k === 'n' || k === 'arrowleft') { e.preventDefault(); if (phase !== 'offer') judge(false); }
   else if (k === 'k') { e.preventDefault(); if (phase === 'offer') offerAccept(); }

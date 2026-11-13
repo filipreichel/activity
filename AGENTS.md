@@ -48,9 +48,10 @@ a s **polovičním časem, nejméně 10 s** · kdo krade a netrefí, o polovinu 
 vlastní kolo a lze ji odmítnout · odpovídá tým jako celek, hráči se needdají.
 
 **Průběh otázky:** 1. klik na dlaždici ji jen **označí** (děti na projekci vidí
-„Vybraná otázka“), 2. klik (tlačítko „Zobrazit otázku“ nebo dlaždice znovu) otázku
-**ukáže** a spustí odpočet. Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů
-pod nimi.
+„Vybraná otázka“), 2. klik („Zobrazit otázku“) ukáže **jen zadání bez odpovědí
+a bez odpočtu**, 3. klik („Zobrazit odpovědi“) přidá varianty a **spustí odpočet**.
+Fáze v `S.current.phase`: `picked → ask → play → (offer → steal) → done`.
+Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů pod nimi.
 
 **Zvuk:** tik odpočtu, **posledních 5 s jiný (ostřejší) tón a zároveň červený odpočet**,
 gong na nule, jiný tón pro správnou a pro špatnou odpověď. Přepínač 🔇/🔉/🔊.
@@ -65,6 +66,15 @@ sticky u spodního okraje, aby byl vidět i když se otázka nevejde.
 **Vejít se na obrazovku:** `fitView()` po každém vykreslení zmenšuje `--fit`
 (projekce od 1,2 dolů, řídicí okno od 1,0, minimum 0,72), dokud se obsah nevejde;
 všechny velikosti písma v CSS jsou `calc(clamp(…) * var(--fit, 1))`.
+
+**Pasti:**
+- Dlaždice jsou `<button disabled>`, aby na projekci nešly klikat — ale `button:disabled`
+  má `opacity: .45`, což dělalo celý plán na projekci **vybledlý**. Řeší to
+  `.board .tile { opacity: 1 }`; neodstraňovat.
+- `index.html` načítá `styles.css`, `data.js` a `app.js` s `?v=N` — po každé změně
+  **zvyš N**, jinak projekční okno (otevřené dřív) zůstane na staré verzi z cache.
+- „Zavřít otázku“ nesmí spoléhat na `undo()` — po obnovení stránky je historie
+  prázdná a tlačítko nic nedělalo.
 
 **Dvě okna:** `?role=display` je projekce pro děti (bez odpovědí a bez ovládání),
 výchozí okno je řídicí panel učitele (vidí správnou odpověď a vysvětlení).
