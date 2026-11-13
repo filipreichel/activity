@@ -1614,6 +1614,8 @@
         lastPublish = now;
         const snap = {
             sentAt: now,
+            gameId: getDeviceId(),                       // jeden běh hry = jedno zařízení
+            label: gameConfig.teams.slice(0, 4).join(' · ').slice(0, 40),
             phase: document.getElementById('game-view').classList.contains('active') ? 'hra' : 'priprava',
             teams: gameConfig.teams.map((name, i) => ({ name: name, score: gameState.scores[i] || 0 })),
             currentTeamIdx: gameState.currentTeamIdx,
