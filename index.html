@@ -1702,8 +1702,12 @@
         }
     })();
     publishState(true);          // ať je zařízení vidět na dashboardu hned po otevření
+    let beat = 0;
     setInterval(() => {          // heartbeat: dashboard pozná, že je zařízení online
-        if (document.visibilityState === 'visible') publishState(false);
+        beat += 1;
+        // na pozadí (jiná záložka) stačí pomaleji, ale úplně přestat nesmíme —
+        // jinak by hra na dashboardu po 20 s zšedla, i když telefon pořád hraje
+        if (document.visibilityState === 'visible' || beat % 3 === 0) publishState(false);
     }, 8000);
     refreshDictionary();         // načte společný slovník a počítadla
     // průběžná aktualizace počítadel: jen když je stránka vidět (šetří kvótu databáze)

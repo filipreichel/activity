@@ -111,6 +111,7 @@ function controlTests() {
 
   /* 1. nastavení, osm týmů */
   check('úvodní obrazovka', q('.setup') !== null);
+  check('výchozí odpočet je 20 s', txt('.seg button.on') === '20 s', txt('.seg button.on'));
   for (let i = 0; i < 10; i++) {
     const btn = q('[data-act="add-team"]');
     if (!btn || btn.disabled) break;
