@@ -56,7 +56,7 @@ Fáze v `S.current.phase`: `picked → ask → play → (offer → steal) → do
 Konec hry = **stupně vítězů** (2–1–3) a zbytek týmů pod nimi.
 
 **Zvuk:** tik odpočtu, **posledních 5 s jiný (ostřejší) tón a zároveň červený odpočet**,
-gong na nule, jiný tón pro správnou a pro špatnou odpověď. Přepínač 🔇/🔉/🔊.
+gong na nule, **fanfára „ta-da-da-dáá" při správné odpovědi** a bručení při špatné. Přepínač 🔇/🔉/🔊.
 Změna hlasitosti ani přepnutí odpovědí **nesmí zastavit odpočet** (render ošetřen
 předáním zbývajícího času do `startTimerFrom`).
 
@@ -98,7 +98,7 @@ Otevírá se tlačítkem „🖥️ Projekce“; obě okna musí být ve stejné
 | `perlicky/data.js` | všech 25 otázek, varianty, správné odpovědi a vysvětlení |
 | `perlicky/app.js` | herní logika, časomíra se zvukem, dvě okna, ukládání |
 | `perlicky/img/` | ilustrace vytáhnuté z prezentace |
-| `perlicky/__test.html` | regresní test řídicího okna (52 kontrol) a projekce (30) |
+| `perlicky/__test.html` | regresní test řídicího okna (60 kontrol) a projekce (38) |
 | `perlicky/__test-sound.html` | test zvuků, gongu a tónů odpovědí přes stub WebAudio (15 kontrol) |
 | `perlicky/__demo.html` | náhled stavů pro screenshoty (`?v=board|picked|question|offer|reveal|results&role=display&m=1`) |
 

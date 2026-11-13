@@ -165,8 +165,13 @@ const Sfx = (function () {
     tick() { blip(880, 0.035, 0.14, 'sine'); },            // tichý tik každou sekundu
     tickUrgent() { blip(1320, 0.07, 0.36, 'triangle'); },  // posledních 10 s
     tickFinal() { blip(1760, 0.05, 0.42, 'square'); },     // poslední 3 s
-    /* správná odpověď — vzestupné dva tóny */
-    correct() { blip(660, 0.14, 0.5, 'sine'); blip(990, 0.26, 0.5, 'sine', 0.13); },
+    /* správná odpověď — klasická fanfára „ta-da-da-dáá" (tududum) */
+    correct() {
+      blip(659.25, 0.10, 0.42, 'triangle');           // ta  (e²)
+      blip(783.99, 0.10, 0.42, 'triangle', 0.10);     // da  (g²)
+      blip(1046.5, 0.46, 0.50, 'triangle', 0.21);     // dáá (c³, držené)
+      blip(1318.51, 0.46, 0.14, 'sine', 0.21);        // jiskřička navrch
+    },
     /* špatná odpověď — sestupné bručení */
     wrong() { sweep(240, 130, 0.42, 0.5, 'triangle'); },
     gong() {

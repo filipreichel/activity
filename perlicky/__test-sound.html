@@ -50,7 +50,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     check('gong: víc tónů (zvon)', window.__tones.length >= 4, JSON.stringify(window.__tones));
 
     window.__tones = []; Sfx.correct();
-    check('správná odpověď: dva vzestupné tóny', window.__tones.length === 2 && window.__tones[1] > window.__tones[0], JSON.stringify(window.__tones));
+    check('správná odpověď: fanfára ta-da-da-dáá (4 vzestupné tóny)',
+      window.__tones.length === 4 && window.__tones.every((f, i, a) => i === 0 || f > a[i - 1]) && window.__tones[3] > 1000,
+      JSON.stringify(window.__tones));
     window.__tones = []; Sfx.wrong();
     check('špatná odpověď: jiný (nižší) tón', window.__tones.length === 1 && window.__tones[0] < 400, JSON.stringify(window.__tones));
 
