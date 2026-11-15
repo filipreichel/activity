@@ -33,8 +33,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'jen POST' });
   const b = req.body || {};
   const pts = Math.trunc(Number(b.body));
-  if (!pts || Math.abs(pts) > 200) {
-    return send(res, 400, { ok: false, error: 'body musí být celé číslo 1–200' });
+  if (!pts || Math.abs(pts) > 500) {
+    return send(res, 400, { ok: false, error: 'zadej celé číslo od −500 do 500' });
   }
   return forward(res, {
     action: 'body',

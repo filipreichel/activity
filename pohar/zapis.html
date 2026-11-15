@@ -64,6 +64,12 @@
     background:linear-gradient(120deg,#ffd97a,#e0a52a); box-shadow:0 8px 22px -10px #e0a52a;
   }
   .send:disabled{opacity:.45; box-shadow:none}
+  /* při odesílání tlačítko pulzuje, ať je vidět, že se něco děje */
+  .send.sending{opacity:1; animation:sendpulse 1s ease-in-out infinite}
+  @keyframes sendpulse{
+    0%,100%{ box-shadow:0 8px 22px -10px #e0a52a }
+    50%{ box-shadow:0 0 0 .7vh rgba(232,198,106,.28) }
+  }
   .hint{font-size:13px; color:#7d7666; text-align:center; margin-top:12px; line-height:1.45}
 
   /* potvrzení */
@@ -353,14 +359,17 @@
     });
     var done = [], queued = [];
     el.send.disabled = true;
-    el.hint.textContent = 'Zapisuju…';
+    el.send.classList.add('sending');
+    el.send.textContent = 'Zapisuju…';
 
     clearMsg();
     (function next(i) {
       if (i >= todo.length) {
+        el.send.classList.remove('sending');
         el.note.value = '';
         el.pts.value = '';
         syncSign();
+        sel = {};
         el.hint.textContent = 'Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.';
         showDone(v, namesFor(ids), done, queued);
         paint();
