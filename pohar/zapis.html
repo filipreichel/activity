@@ -98,11 +98,11 @@
   }
   .done.show{display:flex}
   .done .big{font-size:44px; font-weight:800; letter-spacing:.02em}
-  .done .sub{font-size:16px; color:#9a927f}
+  .done .sub{font-size:16px; color:#9a927f; text-align:center; line-height:1.45}
   .done .row{display:flex; gap:10px; margin-top:6px}
   /* „čekejte" musí být vidět na první pohled a na vlastním řádku */
   .done .wait{margin-top:12px; font-size:20px; font-weight:800; letter-spacing:.06em; color:#ffd97a;
-    animation:waitpulse 1.1s ease-in-out infinite}
+    text-align:center; animation:waitpulse 1.1s ease-in-out infinite}
   @keyframes waitpulse{ 0%,100%{opacity:.55} 50%{opacity:1} }
   .done button{font:inherit; font-size:16px; padding:13px 22px; border-radius:14px; cursor:pointer;
     border:1px solid var(--line); background:rgba(255,255,255,.05); color:#efe6d2}
@@ -394,12 +394,18 @@
     el.send.classList.add('sending');
     el.send.textContent = 'Zapisuju…';
     clearMsg();
-    showDone(v, names, [], [], true);   // karta hned, s výrazným „Čekejte…"
+    showDone(v, names, [], [], true);
+    setProgress(0, todo.length);
 
-    var done = [], queued = [], failed = 0, left = todo.length;
+    var done = [], queued = [], failed = 0, i = 0, tries = 0;
 
-    function finish(item) {
-      if (--left > 0) return;
+    function setProgress(k, n) {
+      var w = el.done.querySelector('.wait');
+      if (!w) return;
+      w.textContent = n > 1 ? '⏳ Čekejte… ' + k + ' z ' + n : '⏳ Čekejte…';
+    }
+
+    function finish() {
       el.send.classList.remove('sending');
       el.note.value = '';
       el.pts.value = '';
@@ -410,29 +416,34 @@
       showDone(v, names, done, queued, false);
     }
 
-    function fire(item, attempt) {
+    // zápisy jdou jeden po druhém: skript pouští jen jeden za 2 s a souběžné
+    // požadavky se jinak tiše zahazují — proto se u čtyř kolejí čeká 4×
+    function step() {
+      if (i >= todo.length) { finish(); return; }
+      var item = todo[i];
       send(item, function (ok, j) {
+        if (!ok && j && /příliš rychle/.test(String(j.error || '')) && tries < 4) {
+          tries++;
+          setTimeout(step, 2400);
+          return;
+        }
+        tries = 0;
         if (ok) {
           done.push(item);
           histAdd({ id: item.eventId, t: Date.now(), kolej: item.kolej, body: item.body, poznamka: item.poznamka });
           clearMsg();
-          finish(item);
-          return;
+        } else if (j === undefined) {
+          queue(item); queued.push(item);
+        } else {
+          failed++; showMsg(friendly(j));
         }
-        // server drží 2s odstup mezi zápisy; když jde víc kolejí naráz, první pokusy
-        // skončí hláškou „příliš rychle po sobě" — proto se zkouší znovu
-        var tooFast = j && /příliš rychle/.test(String(j.error || ''));
-        if (tooFast && attempt < 8) {
-          setTimeout(function () { fire(item, attempt + 1); }, 2400);
-          return;
-        }
-        if (j === undefined) { queue(item); queued.push(item); }
-        else { failed++; showMsg(friendly(j)); }
-        finish(item);
+        i++;
+        setProgress(i, todo.length);
+        step();
       });
     }
 
-    todo.forEach(function (item) { fire(item, 0); });
+    step();
   };
 
   var queueTimer = setInterval(flush, 20000);

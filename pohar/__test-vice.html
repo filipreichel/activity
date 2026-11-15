@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><title>TEST-START</title></head>
+<body>
+<script>
+/* Test: označení všech čtyř kolejí musí opravdu zapsat čtyři zápisy.
+   Běží proti dev serveru s POHAR_FAKE=1, který napodobuje 2s odstup ve skriptu. */
+const fails = [];
+function ok(c, n) { if (!c) fails.push(n); }
+
+const f = document.createElement('iframe');
+f.style.cssText = 'width:390px;height:844px;border:0';
+f.src = 'zapis.html?k=test&jmeno=Test';
+document.body.appendChild(f);
+
+const t0 = Date.now();
+const iv = setInterval(() => {
+  const d = f.contentDocument, w = f.contentWindow;
+  if (!d) return;
+  const btns = d.querySelectorAll('.house');
+  if (btns.length < 4) {
+    if (Date.now() - t0 > 15000) { clearInterval(iv); document.title = 'FAIL: koleje se nenačetly'; }
+    return;
+  }
+  clearInterval(iv);
+
+  btns.forEach(b => b.click());
+  ok(d.querySelectorAll('.house.on').length === 4, 'označeny čtyři koleje');
+
+  const inp = d.getElementById('pts');
+  inp.value = '5';
+  inp.dispatchEvent(new w.Event('input', { bubbles: true }));
+
+  const send = d.getElementById('send');
+  ok(/do 4 kolejí/.test(send.textContent), 'tlačítko počítá 4: ' + send.textContent);
+  send.click();
+
+  // hned po kliknutí (synchronně) musí být vidět „Čekejte" a žádná tlačítka
+  const wait = d.querySelector('.done .wait');
+  ok(!!wait, 'je vidět Čekejte');
+  ok(/Čekejte/.test(wait ? wait.textContent : '') && /4/.test(wait ? wait.textContent : ''), 'text čekejte: ' + (wait ? wait.textContent : '–'));
+  ok(d.getElementById('undo').style.visibility === 'hidden', 'tlačítka jsou skrytá při čekání');
+  ok(d.querySelector('.done').classList.contains('show'), 'karta je otevřená');
+
+  {
+    const t1 = Date.now();
+    const iv2 = setInterval(() => {
+      const sub = d.getElementById('doneSub');
+      const text = sub ? sub.textContent : '';
+      if (/zapsáno/.test(text)) {
+        clearInterval(iv2);
+        ok((text.match(/·/g) || []).length >= 3, 'v potvrzení jsou všechny koleje: ' + text);
+        ok(d.getElementById('undo').style.visibility === 'visible', 'tlačítka se objevila');
+        fetch('/fake-log').then(r => r.json()).then(j => {
+          const lines = j.log.trim().split('\n').filter(Boolean);
+          const houses = lines.map(l => l.split(' ')[0]);
+          ok(new Set(houses).size === 4, 'čtyři různé koleje: ' + houses.join(','));
+          ok(lines.every(l => l.endsWith(' 5')), 'všechny s pěti body');
+          document.title = fails.length ? 'FAIL: ' + fails.join(' | ') : 'PASS-10';
+        });
+        return;
+      }
+      if (Date.now() - t1 > 40000) {
+        clearInterval(iv2);
+        document.title = 'FAIL: nedoběhlo do potvrzení (' + text + ')';
+      }
+    }, 200);
+  }
+}, 120);
+</script>
+</body></html>
