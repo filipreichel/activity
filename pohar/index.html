@@ -276,6 +276,7 @@
     this.ctx = this.canvas.getContext('2d');
     this.slots = [];
     this.particles = [];
+    this.suck = [];
     this.sparks = [];
     this.sprites = null;
     this.levelY = 0;
@@ -494,12 +495,36 @@
       dust = an.to < an.from;
     }
     if (rate > 0 && Math.random() < Math.min(1, rate * dt)) {
-      if (!dust) sndPour();
-      this.particles.push({
-        x: cx + (Math.random() - .5) * 7, y: this.yMid + 2,
-        vy: 60 + Math.random() * 140, vx: (Math.random() - .5) * 26,
-        v: Math.floor(Math.random() * 3), dust: dust
-      });
+      if (!dust) {
+        sndPour();
+        this.particles.push({
+          x: cx + (Math.random() - .5) * 7, y: this.yMid + 2,
+          vy: 60 + Math.random() * 140, vx: (Math.random() - .5) * 26,
+          v: Math.floor(Math.random() * 3)
+        });
+      } else {
+        // ubírání: kameny letí opačným směrem — z hromady hrdlem zpátky nahoru
+        var sx = cx + (Math.random() - .5) * this.half * 1.15;
+        this.suck.push({
+          x: sx, y: this.yBot, sx: sx, sy: Math.min(this.yBot - 4, levelY + Math.random() * size * 3),
+          tx: cx + (Math.random() - .5) * this.half * 0.75,
+          ty: this.yTop + Math.random() * (this.yMid - this.yTop) * 0.7,
+          p: 0, sp: 0.9 + Math.random() * 0.7, v: Math.floor(Math.random() * 3)
+        });
+      }
+    }
+
+    // stoupající kameny (odečítání)
+    for (var su = this.suck.length - 1; su >= 0; su--) {
+      var sq = this.suck[su];
+      sq.p += dt * sq.sp;
+      if (sq.p >= 1) { this.suck.splice(su, 1); continue; }
+      var ee = sq.p * sq.p * (3 - 2 * sq.p);
+      var upx = sq.sx + (sq.tx - sq.sx) * ee + Math.sin(sq.p * 9) * 3 * (1 - sq.p);
+      var upy = sq.sy + (sq.ty - sq.sy) * ee;
+      g.globalAlpha = 0.92 * Math.min(1, (1 - sq.p) * 2.4);
+      g.drawImage(this.sprites[sq.v], upx - size * .28, upy - size * .28, size * .56, size * .56);
+      g.globalAlpha = 1;
     }
     for (var p = this.particles.length - 1; p >= 0; p--) {
       var q = this.particles[p];
