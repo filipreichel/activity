@@ -90,6 +90,10 @@
   .hrow.rev{opacity:.45}
   .hrow.rev .pt{text-decoration:line-through}
   .hempty{color:#6f6959; font-size:13.5px; text-align:center; padding:18px 0}
+  .qbadge{position:fixed; left:12px; bottom:12px; z-index:15; display:none;
+    background:rgba(232,198,106,.14); border:1px solid rgba(232,198,106,.4); color:#ffe9a8;
+    border-radius:999px; padding:8px 14px; font-size:13.5px; letter-spacing:.04em}
+  .qbadge.show{display:block}
 
   /* potvrzení */
   .done{
@@ -160,6 +164,8 @@
   <div class="histhead"><span>Moje zápisy</span><b id="histWho" style="display:none"></b></div>
   <div class="hist" id="hist"></div>
 </div>
+
+<div class="qbadge" id="qbadge"></div>
 
 <div class="ask" id="ask">
   <div class="askbox">
@@ -378,6 +384,49 @@
     });
   }
 
+  // ---------------------------------------------------------------- odesílací fronta
+  // Skript pustí jen jeden zápis za 2 s. Posíláme proto po 3 s, ale NEČEKÁME na odpověď —
+  // průvodce má mobil hned volný a zápisy dobíhají na pozadí.
+  var outbox = [];
+  var inFlight = 0;
+  var lastFire = 0;
+
+  function queueBadge() {
+    var el2 = document.getElementById('qbadge');
+    var n = outbox.length + inFlight;
+    if (!n) { el2.classList.remove('show'); return; }
+    el2.textContent = '⏳ odesílám ' + n + (n === 1 ? ' zápis' : n < 5 ? ' zápisy' : ' zápisů');
+    el2.classList.add('show');
+  }
+
+  function pumpQueue() {
+    if (!outbox.length) { queueBadge(); return; }
+    var wait = Math.max(0, 3000 - (Date.now() - lastFire));
+    setTimeout(function () {
+      var job = outbox.shift();
+      lastFire = Date.now();
+      inFlight++;
+      queueBadge();
+      send(job.item, function (ok, j) {
+        inFlight--;
+        if (ok) {
+          if (job.done) job.done(true, job.item);
+        } else if (j && /příliš rychle/.test(String(j.error || '')) && job.tries < 5) {
+          job.tries++;
+          outbox.unshift(job);
+        } else if (j === undefined) {
+          queue(job.item);
+          if (job.done) job.done(false, job.item, true);
+        } else {
+          if (job.done) job.done(false, job.item, false, j);
+        }
+        queueBadge();
+        pumpQueue();
+      });
+      pumpQueue();
+    }, wait);
+  }
+
   el.send.onclick = function () {
     if (!name) { askName(); return; }
     var v = value();
@@ -391,81 +440,65 @@
     });
 
     el.send.disabled = true;
-    el.send.classList.add('sending');
-    el.send.textContent = 'Zapisuju…';
     clearMsg();
-    showDone(v, names, [], [], true);
-    setProgress(0, todo.length);
+    showDone(v, names, [], [], true, todo.length);
 
-    var done = [], queued = [], failed = 0, i = 0, tries = 0;
-
-    function setProgress(k, n) {
-      var w = el.done.querySelector('.wait');
-      if (!w) return;
-      w.textContent = n > 1 ? '⏳ Čekejte… ' + k + ' z ' + n : '⏳ Čekejte…';
-    }
-
-    function finish() {
-      el.send.classList.remove('sending');
-      el.note.value = '';
-      el.pts.value = '';
-      syncSign();
-      sel = {};
-      paint();
-      if (failed) { el.done.classList.remove('show'); return; }
-      showDone(v, names, done, queued, false);
-    }
-
-    // zápisy jdou jeden po druhém: skript pouští jen jeden za 2 s a souběžné
-    // požadavky se jinak tiše zahazují — proto se u čtyř kolejí čeká 4×
-    function step() {
-      if (i >= todo.length) { finish(); return; }
-      var item = todo[i];
-      send(item, function (ok, j) {
-        if (!ok && j && /příliš rychle/.test(String(j.error || '')) && tries < 4) {
-          tries++;
-          setTimeout(step, 2400);
-          return;
+    var done = [], queued = [], failed = 0, settled = 0;
+    todo.forEach(function (item) {
+      outbox.push({
+        item: item, tries: 0,
+        done: function (ok, it, wasQueued, j) {
+          settled++;
+          if (ok) {
+            done.push(it);
+            histAdd({ id: it.eventId, t: Date.now(), kolej: it.kolej, body: it.body, poznamka: it.poznamka });
+            clearMsg();
+          } else if (wasQueued) { queued.push(it); }
+          else { failed++; showMsg(friendly(j)); }
+          setProgress(settled, todo.length);
+          if (settled === todo.length) {
+            el.send.disabled = false;
+            el.note.value = '';
+            el.pts.value = '';
+            syncSign();
+            sel = {};
+            paint();
+            if (!failed) showDone(v, names, done, queued, false);
+            else { el.done.classList.remove('show'); el.send.disabled = false; }
+          }
         }
-        tries = 0;
-        if (ok) {
-          done.push(item);
-          histAdd({ id: item.eventId, t: Date.now(), kolej: item.kolej, body: item.body, poznamka: item.poznamka });
-          clearMsg();
-        } else if (j === undefined) {
-          queue(item); queued.push(item);
-        } else {
-          failed++; showMsg(friendly(j));
-        }
-        i++;
-        setProgress(i, todo.length);
-        step();
       });
-    }
-
-    step();
+    });
+    pumpQueue();
   };
 
   var queueTimer = setInterval(flush, 20000);
   window.addEventListener('online', flush);
 
   // ---------------------------------------------------------------- potvrzení
+  function setProgress(k, n) {
+    var w = el.done.querySelector('.wait');
+    if (!w) return;
+    w.textContent = '⏳ Odesílám… ' + k + ' z ' + n;
+  }
+
   function showDone(v, names, done, queued, pending) {
     if (!pending) lastEvents = (done || []).map(function (p) { return p.eventId; });
     el.doneBig.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
     el.doneBig.style.color = v > 0 ? '#8ce0a0' : '#ff9a8a';
     var sub = (names || []).join(' · ');
     if (pending) {
-      el.doneSub.innerHTML = esc(sub) + '<div class="wait">⏳ Čekejte…</div>';
+      el.doneSub.innerHTML = esc(sub) + '<div class="wait">⏳ Odesílám…</div>';
     } else {
       if (queued && queued.length) sub += ' · odešle se později';
       else sub += ' · zapsáno';
       el.doneSub.textContent = sub;
     }
     // dokud nepřijde odpověď, tlačítka nejsou vidět — jinak to vypadá, že se vrací stará karta
-    var vis = pending ? 'hidden' : 'visible';
-    document.getElementById('undo').style.visibility = vis;
-    document.getElementById('again').style.visibility = vis;
+    // „Další zápis" je dostupné hned — zápisy dobíhají na pozadí.
+    // „Vrátit" až ve chvíli, kdy je co vracet.
+    document.getElementById('again').style.visibility = 'visible';
+    document.getElementById('undo').style.visibility = (pending || !(done && done.length)) ? 'hidden' : 'visible';
     el.done.classList.add('show');
     clearTimeout(lastTimer);
     lastTimer = setTimeout(function () { el.done.classList.remove('show'); }, pending ? 60000 : 7000);

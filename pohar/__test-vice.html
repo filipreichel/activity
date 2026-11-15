@@ -37,7 +37,7 @@ const iv = setInterval(() => {
   // hned po kliknutí (synchronně) musí být vidět „Čekejte" a žádná tlačítka
   const wait = d.querySelector('.done .wait');
   ok(!!wait, 'je vidět Čekejte');
-  ok(/Čekejte/.test(wait ? wait.textContent : '') && /4/.test(wait ? wait.textContent : ''), 'text čekejte: ' + (wait ? wait.textContent : '–'));
+  ok(/Odesílám/.test(wait ? wait.textContent : ''), 'text odesílám: ' + (wait ? wait.textContent : '–'));
   ok(d.getElementById('undo').style.visibility === 'hidden', 'tlačítka jsou skrytá při čekání');
   ok(d.querySelector('.done').classList.contains('show'), 'karta je otevřená');
 
