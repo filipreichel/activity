@@ -68,6 +68,8 @@
     border:1px solid rgba(232,198,106,.22); border-radius:.6vh; padding:.3vh .9vh; cursor:pointer;
   }
   .net{min-width:11ch; text-align:right; transition:color .3s}
+  .sndhint{display:none; margin-right:1.2vw; color:#ffd97a; letter-spacing:.08em}
+  .sndhint.show{display:inline}
   .net.off{color:#e07a6a}
 
   /* obloha se hvězdami a rám obrazovky */
@@ -104,6 +106,7 @@
   <main id="row"></main>
   <footer>
     <span class="mid"></span>
+    <span class="sndhint" id="sndhint">🔈 klikni kamkoli pro zvuk</span>
     <span class="net" id="net">připojeno</span>
     <button class="snd" id="snd" title="zvuk">🔊</button>
   </footer>
@@ -196,8 +199,18 @@
     if (ac.state === 'suspended') ac.resume();
     return ac;
   }
+  function showSndHint() {
+    var el = document.getElementById('sndhint');
+    if (!el) return;
+    el.classList.add('show');
+    clearTimeout(showSndHint.t);
+    showSndHint.t = setTimeout(function () { el.classList.remove('show'); }, 9000);
+  }
+
   function tone(freq, dur, type, vol, delay) {
     var a = audio(); if (!a || !sndOn) return;
+    // prohlížeč pustí zvuk až po prvním klepnutí — dokud se tak nestane, poraď to
+    if (a.state !== 'running') { showSndHint(); return; }
     var t0 = a.currentTime + (delay || 0);
     var o = a.createOscillator(), g = a.createGain();
     o.type = type || 'sine'; o.frequency.value = freq;
@@ -724,7 +737,7 @@
       var st = null;
       for (var i = 0; i < state.length; i++) if (state[i].id === h.id) st = state[i];
       if (!st) return;
-      var v = Number(h.body) || 0;
+      var v = Math.max(0, Number(h.body) || 0);   // minimum je nula, nikdy se nejde do minusu
       if (firstScore) { st.shown = v; st.target = v; return; }
       if (v === st.target) return;
       if (v > st.target && !played) { sndPlus(); played = true; }
@@ -852,8 +865,16 @@
     sndBtn.textContent = sndOn ? '🔊' : '🔇';
     if (sndOn) { audio(); tone(880, .2, 'sine', .06); }
   };
-  document.addEventListener('click', function () { audio(); }, { once: true });
-  document.addEventListener('keydown', function () { audio(); }, { once: true });
+  function unlockAudio() {
+    var a = audio();
+    if (a && a.state === 'running') {
+      var el = document.getElementById('sndhint');
+      if (el) el.classList.remove('show');
+    }
+  }
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
+  document.addEventListener('touchstart', unlockAudio, { passive: true });
 
   document.addEventListener('visibilitychange', function () { last = performance.now(); });
 })();

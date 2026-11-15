@@ -100,6 +100,10 @@
   .done .big{font-size:44px; font-weight:800; letter-spacing:.02em}
   .done .sub{font-size:16px; color:#9a927f}
   .done .row{display:flex; gap:10px; margin-top:6px}
+  /* „čekejte" musí být vidět na první pohled a na vlastním řádku */
+  .done .wait{margin-top:12px; font-size:20px; font-weight:800; letter-spacing:.06em; color:#ffd97a;
+    animation:waitpulse 1.1s ease-in-out infinite}
+  @keyframes waitpulse{ 0%,100%{opacity:.55} 50%{opacity:1} }
   .done button{font:inherit; font-size:16px; padding:13px 22px; border-radius:14px; cursor:pointer;
     border:1px solid var(--line); background:rgba(255,255,255,.05); color:#efe6d2}
   .done button.undo{color:#ffb4a8; border-color:#5a2b2b}
@@ -390,33 +394,45 @@
     el.send.classList.add('sending');
     el.send.textContent = 'Zapisuju…';
     clearMsg();
-    // karta hned — zpětná vazba je okamžitá, potvrzení dorazí za pár sekund
-    showDone(v, names, [], [], true);
+    showDone(v, names, [], [], true);   // karta hned, s výrazným „Čekejte…"
 
     var done = [], queued = [], failed = 0, left = todo.length;
-    todo.forEach(function (item) {
+
+    function finish(item) {
+      if (--left > 0) return;
+      el.send.classList.remove('sending');
+      el.note.value = '';
+      el.pts.value = '';
+      syncSign();
+      sel = {};
+      paint();
+      if (failed) { el.done.classList.remove('show'); return; }
+      showDone(v, names, done, queued, false);
+    }
+
+    function fire(item, attempt) {
       send(item, function (ok, j) {
         if (ok) {
           done.push(item);
           histAdd({ id: item.eventId, t: Date.now(), kolej: item.kolej, body: item.body, poznamka: item.poznamka });
           clearMsg();
-        } else if (j === undefined) { queue(item); queued.push(item); }
-        else failed++;
-        if (--left > 0) return;
-
-        el.send.classList.remove('sending');
-        el.note.value = '';
-        el.pts.value = '';
-        syncSign();
-        sel = {};
-        paint();
-        if (failed) {
-          el.done.classList.remove('show');
+          finish(item);
           return;
         }
-        showDone(v, names, done, queued, false);
+        // server drží 2s odstup mezi zápisy; když jde víc kolejí naráz, první pokusy
+        // skončí hláškou „příliš rychle po sobě" — proto se zkouší znovu
+        var tooFast = j && /příliš rychle/.test(String(j.error || ''));
+        if (tooFast && attempt < 8) {
+          setTimeout(function () { fire(item, attempt + 1); }, 2400);
+          return;
+        }
+        if (j === undefined) { queue(item); queued.push(item); }
+        else { failed++; showMsg(friendly(j)); }
+        finish(item);
       });
-    });
+    }
+
+    todo.forEach(function (item) { fire(item, 0); });
   };
 
   var queueTimer = setInterval(flush, 20000);
@@ -428,10 +444,13 @@
     el.doneBig.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
     el.doneBig.style.color = v > 0 ? '#8ce0a0' : '#ff9a8a';
     var sub = (names || []).join(' · ');
-    if (pending) sub += ' · čekejte…';
-    else if (queued && queued.length) sub += ' · odešle se později';
-    else sub += ' · zapsáno';
-    el.doneSub.textContent = sub;
+    if (pending) {
+      el.doneSub.innerHTML = esc(sub) + '<div class="wait">⏳ Čekejte…</div>';
+    } else {
+      if (queued && queued.length) sub += ' · odešle se později';
+      else sub += ' · zapsáno';
+      el.doneSub.textContent = sub;
+    }
     // dokud nepřijde odpověď, tlačítka nejsou vidět — jinak to vypadá, že se vrací stará karta
     var vis = pending ? 'hidden' : 'visible';
     document.getElementById('undo').style.visibility = vis;
