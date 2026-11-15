@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Školní pohár</title>
+<link rel="manifest" href="manifest-tv.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<style>
+  :root{
+    --gold:#e8c66a; --gold-dim:#a8863c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Georgia,'Times New Roman',serif; color:#efe6d2; overflow:hidden;
+    background:
+      radial-gradient(120% 70% at 50% -12%, #1b2340 0%, #0d1020 46%, #06070f 100%), #06070f;
+  }
+  .stage{position:relative; height:100vh; display:flex; flex-direction:column; padding:1.6vh 1.6vw 1vh; overflow:hidden}
+  .glow{position:absolute; border-radius:50%; filter:blur(90px); opacity:.16; pointer-events:none; width:34vw; height:34vw}
+  .g1{background:#e0233a; left:-8vw; top:26vh}
+  .g2{background:#1f9d55; left:22vw; top:12vh}
+  .g3{background:#2b6fd6; right:22vw; top:12vh}
+  .g4{background:#e0a52a; right:-8vw; top:26vh}
+
+  header{text-align:center; position:relative; z-index:2; flex:0 0 auto}
+  h1{
+    font-size:3.9vh; letter-spacing:.26em; font-weight:400; text-transform:uppercase;
+    background:linear-gradient(180deg,#fff3cc,#e8c66a 55%,#9c7a2e);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{font-size:1.6vh; letter-spacing:.3em; color:#8e8676; text-transform:uppercase; margin-top:.4vh}
+
+  main{flex:1 1 auto; display:grid; grid-template-columns:repeat(4,1fr); gap:.6vw; position:relative; z-index:2; min-height:0}
+  .house{display:flex; flex-direction:column; min-height:0; text-align:center}
+  .hname{font-size:2.35vh; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-dim); flex:0 0 auto}
+  .hgem{font-size:1.4vh; letter-spacing:.2em; text-transform:uppercase; color:#6d6759; margin-top:.2vh; flex:0 0 auto}
+  .glass{flex:1 1 auto; min-height:0; position:relative}
+  canvas{display:block; width:100%; height:100%}
+  .score{display:flex; justify-content:center; flex:0 0 auto; font-variant-numeric:tabular-nums}
+  /* Georgia má staříkové číslice (9 a 5 různě vysoké) — čísla proto kreslí lining serif */
+  .od{display:inline-flex; overflow:hidden; height:5.4vh; line-height:5.4vh; font-size:4.9vh; color:#f6edd8;
+      font-family:'Liberation Serif','Noto Serif','DejaVu Serif',serif; font-variant-numeric:lining-nums;
+      text-shadow:0 0 2vh rgba(232,198,106,.35)}
+  .od .col{width:3.4vh; overflow:hidden; text-align:center}
+  .od .strip{transition:transform .85s cubic-bezier(.22,.9,.24,1)}
+  .od .strip div{height:5.4vh}
+  .cap{font-size:1.3vh; color:#5f5a4d; letter-spacing:.08em; flex:0 0 auto; margin-top:-.2vh}
+
+  footer{
+    flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    font-size:1.45vh; letter-spacing:.14em; color:#6b6656; text-transform:uppercase;
+    padding:.8vh 0 0; position:relative; z-index:2;
+  }
+  footer .mid{flex:1; text-align:center}
+  button.snd{
+    font-family:inherit; font-size:1.5vh; background:rgba(255,255,255,.05); color:#cfc6b0;
+    border:1px solid rgba(232,198,106,.22); border-radius:.6vh; padding:.3vh .9vh; cursor:pointer;
+  }
+  .net{min-width:11ch; text-align:right; transition:color .3s}
+  .net.off{color:#e07a6a}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="glow g4"></div>
+  <header>
+    <h1>Školní pohár</h1>
+    <div class="sub" id="sub">načítám…</div>
+  </header>
+  <main id="row"></main>
+  <footer>
+    <span id="hint">body zapisují průvodci na svých telefonech</span>
+    <span class="mid"></span>
+    <span class="net" id="net">připojeno</span>
+    <button class="snd" id="snd" title="zvuk">🔊</button>
+  </footer>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var state = [];          // [{ id, nazev, drahokam, barva, target, shown }]
+  var glasses = [];
+  var capacity = 100;
+  var lastLeader = null;
+  var lastChange = Date.now();
+  var failCount = 0;
+
+  // ---------------------------------------------------------------- barvy
+  function shades(hex) {
+    var h = String(hex || '#888888').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    function ch(s) { var v = parseInt(s, 16); return isNaN(v) ? 128 : v; }
+    var r = ch(h.slice(0, 2)), g = ch(h.slice(2, 4)), b = ch(h.slice(4, 6));
+    function mix(c, k) { return Math.max(0, Math.min(255, Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k)))); }
+    function hex2(x, y, z) { return '#' + [x, y, z].map(function (v) { return v.toString(16).padStart(2, '0'); }).join(''); }
+    return [hex2(mix(r, .34), mix(g, .34), mix(b, .30)), hex2(r, g, b), hex2(mix(r, -.55), mix(g, -.55), mix(b, -.55))];
+  }
+
+  function niceCeil(v) {
+    var steps = [50, 100, 200, 500, 1000, 2500, 5000, 10000];
+    for (var i = 0; i < steps.length; i++) if (v <= steps[i]) return steps[i];
+    return Math.ceil(v / 5000) * 5000;
+  }
+
+  // ---------------------------------------------------------------- zvuk
+  var ac = null;
+  var sndOn = localStorage.getItem('pohar.snd') !== '0';
+  var lastPour = 0;
+
+  function audio() {
+    if (!ac) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type, vol, delay) {
+    var a = audio(); if (!a || !sndOn) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function noise(dur, freq, vol) {
+    var a = audio(); if (!a || !sndOn) return;
+    var n = Math.floor(a.sampleRate * dur);
+    var buf = a.createBuffer(1, n, a.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    var src = a.createBufferSource(); src.buffer = buf;
+    var bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 1.1;
+    var g = a.createGain(); g.gain.value = vol;
+    src.connect(bp); bp.connect(g); g.connect(a.destination);
+    src.start();
+  }
+  function sndPlus() { tone(1046, .5, 'sine', .10); tone(1568, .45, 'sine', .05, .06); }
+  function sndMinus() { tone(146, .35, 'triangle', .12); noise(.18, 320, .05); }
+  function sndLead() { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, .5, 'sine', .08, i * .12); }); }
+  function sndPour() {
+    var now = Date.now();
+    if (now - lastPour < 130) return;
+    lastPour = now;
+    noise(.09, 1600 + Math.random() * 600, .022);
+  }
+
+  // ---------------------------------------------------------------- drahokamy
+  function gemSprites(c1, c2, c3, size) {
+    return [-0.26, 0.04, 0.3].map(function (rot) {
+      var s = document.createElement('canvas');
+      s.width = s.height = size;
+      var g = s.getContext('2d'), r = size / 2;
+      g.translate(r, r); g.rotate(rot);
+      g.beginPath();
+      for (var i = 0; i < 6; i++) {
+        var a = -Math.PI / 2 + i * (Math.PI / 3);
+        var rr = i % 2 === 0 ? r * 0.92 : r * 0.72;
+        var x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+        i ? g.lineTo(x, y) : g.moveTo(x, y);
+      }
+      g.closePath();
+      var grad = g.createLinearGradient(-r, -r, r, r);
+      grad.addColorStop(0, c1); grad.addColorStop(.55, c2); grad.addColorStop(1, c3);
+      g.fillStyle = grad; g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = Math.max(1, size * .05); g.stroke();
+      g.beginPath();
+      g.moveTo(-r * .34, -r * .5); g.lineTo(0, -r * .1); g.lineTo(-r * .1, r * .42); g.lineTo(-r * .5, r * .04);
+      g.closePath(); g.fillStyle = 'rgba(255,255,255,.40)'; g.fill();
+      g.beginPath(); g.arc(-r * .22, -r * .3, r * .13, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,.75)'; g.fill();
+      return s;
+    });
+  }
+
+  // ---------------------------------------------------------------- hodiny
+  function Glass(host, st) {
+    this.st = st;
+    this.canvas = document.createElement('canvas');
+    host.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.slots = [];
+    this.particles = [];
+    this.sprites = null;
+    this.levelY = 0;
+  }
+
+  Glass.prototype.resize = function () {
+    var cw = this.canvas.clientWidth || 300;
+    var ch = this.canvas.clientHeight || 400;
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.canvas.width = Math.round(cw * dpr);
+    this.canvas.height = Math.round(ch * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = cw; this.H = ch;
+    this.build();
+  };
+
+  Glass.prototype.build = function () {
+    var W = this.W, H = this.H, cx = W / 2;
+    var capT = H * 0.045, capB = H * 0.05, pad = W * 0.045;
+    var yTop = capT + H * 0.02, yBot = H - capB - H * 0.015;
+    var yMid = H / 2, neck = Math.max(5, W * 0.03);
+    var half = Math.min(W / 2 - pad - W * 0.03, (yMid - yTop) * 0.98);
+
+    this.cx = cx; this.half = half; this.neck = neck;
+    this.yTop = yTop; this.yBot = yBot; this.yMid = yMid;
+    this.capT = capT; this.capB = capB;
+
+    var upper = new Path2D();
+    upper.moveTo(cx - half, yTop);
+    upper.quadraticCurveTo(cx - half * 1.02, yMid - H * 0.13, cx - neck, yMid - 4);
+    upper.lineTo(cx + neck, yMid - 4);
+    upper.quadraticCurveTo(cx + half * 1.02, yMid - H * 0.13, cx + half, yTop);
+    upper.closePath();
+    this.upper = upper;
+
+    var lower = new Path2D();
+    lower.moveTo(cx - neck, yMid + 4);
+    lower.lineTo(cx + neck, yMid + 4);
+    lower.quadraticCurveTo(cx + half * 1.02, yMid + H * 0.13, cx + half, yBot);
+    lower.lineTo(cx - half, yBot);
+    lower.quadraticCurveTo(cx - half * 1.02, yMid + H * 0.13, cx - neck, yMid + 4);
+    lower.closePath();
+    this.lower = lower;
+
+    var gem = Math.max(8, Math.min(18, W / 15));
+    this.gem = gem;
+    var sh = shades(this.st.barva);
+    this.sprites = gemSprites(sh[0], sh[1], sh[2], Math.round(gem * 1.9));
+
+    var slots = [], n = 0, rowH = gem * 0.72;
+    for (var y = yBot - gem * 0.55; y > yMid + 10; y -= rowH) {
+      for (var x = cx - half + gem * 0.5; x < cx + half; x += gem * 0.9) {
+        if (this.ctx.isPointInPath(lower, x, y)) {
+          var hh = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+          var rnd = hh - Math.floor(hh);
+          slots.push({
+            x: x, y: y,
+            dx: (rnd - 0.5) * gem * 0.24,
+            dy: ((Math.sin(x * 3.7 + y * 9.1) * 0.5 + 0.5) - 0.5) * gem * 0.18,
+            j: rnd, v: n++ % 3
+          });
+        }
+      }
+    }
+    this.slots = slots;
+    var per = Math.max(1, Math.round(capacity / Math.max(1, slots.length)));
+    if (this.cap) this.cap.textContent = '1 drahokam ≈ ' + per + ' b.';
+  };
+
+  Glass.prototype.draw = function (dt) {
+    var g = this.ctx, W = this.W, H = this.H, cx = this.cx, st = this.st;
+    var k = Math.min(1, dt * 4.2);
+    st.shown += (st.target - st.shown) * k;
+    if (Math.abs(st.target - st.shown) < 0.4) st.shown = st.target;
+
+    g.clearRect(0, 0, W, H);
+
+    // dřevo a mosaz
+    g.fillStyle = '#2b1a10';
+    g.fillRect(W * .03, this.capT * .3, W * .94, this.capT);
+    g.fillRect(W * .03, H - this.capB * 1.2, W * .94, this.capB);
+    var brass = g.createLinearGradient(0, 0, 0, H * .02);
+    brass.addColorStop(0, '#6b5426'); brass.addColorStop(.5, '#c8a862'); brass.addColorStop(1, '#4a3818');
+    g.fillStyle = brass;
+    g.fillRect(W * .05, this.yTop - H * .012, W * .9, Math.max(2, H * .006));
+    g.fillRect(W * .05, this.yBot + H * .006, W * .9, Math.max(2, H * .006));
+    g.fillStyle = '#3a2416';
+    g.fillRect(W * .03, this.capT * .3, W * .022, H - this.capB * 1.5);
+    g.fillRect(W - W * .052, this.capT * .3, W * .022, H - this.capB * 1.5);
+
+    // sklo zezadu
+    var glassGrad = g.createLinearGradient(0, this.yTop, 0, this.yBot);
+    glassGrad.addColorStop(0, 'rgba(150,180,220,.07)');
+    glassGrad.addColorStop(.5, 'rgba(190,210,240,.12)');
+    glassGrad.addColorStop(1, 'rgba(150,180,220,.07)');
+    g.fillStyle = glassGrad;
+    g.fill(this.upper); g.fill(this.lower);
+
+    // hromada
+    var frac = capacity > 0 ? Math.max(0, Math.min(1, st.shown / capacity)) : 0;
+    var levelY = this.yBot - (this.yBot - (this.yMid + this.gem * 1.6)) * frac;
+    this.levelY = levelY;
+    var size = this.gem;
+    g.save();
+    g.clip(this.lower);
+    var sh = g.createLinearGradient(0, this.yBot - size * 2.6, 0, this.yBot);
+    sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = sh;
+    g.fillRect(cx - this.half, this.yBot - size * 2.6, this.half * 2, size * 2.6);
+    for (var i = 0; i < this.slots.length; i++) {
+      var s = this.slots[i];
+      var dome = (1 - Math.pow((s.x - cx) / this.half, 2)) * size * 2.6;
+      if (s.y < levelY - dome) continue;
+      var sc = 0.93 + s.j * 0.13;
+      g.drawImage(this.sprites[s.v], s.x - size * sc / 2 + s.dx, s.y - size * sc / 2 + s.dy, size * sc, size * sc);
+    }
+    if (frac > 0.02 && frac < 0.995) {
+      var halo = g.createRadialGradient(cx, levelY + size * .4, 2, cx, levelY + size * .4, size * 3.2);
+      halo.addColorStop(0, 'rgba(255,255,255,.26)');
+      halo.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(cx, levelY + size * .4, size * 3.2, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+
+    // sypání
+    var flowing = st.target > st.shown + 0.4;
+    if (flowing) {
+      sndPour();
+      if (Math.random() < dt * 9) {
+        this.particles.push({
+          x: cx + (Math.random() - .5) * 6, y: this.yMid + 2,
+          vy: 60 + Math.random() * 140, vx: (Math.random() - .5) * 26,
+          v: Math.floor(Math.random() * 3)
+        });
+      }
+    }
+    for (var p = this.particles.length - 1; p >= 0; p--) {
+      var q = this.particles[p];
+      q.vy += 900 * dt; q.y += q.vy * dt; q.x += q.vx * dt;
+      var hit = levelY + (1 - Math.pow((q.x - cx) / this.half, 2)) * size * 2.6;
+      if ((q.y > hit && q.y > this.yMid + size * 3) || q.y > this.yBot) { this.particles.splice(p, 1); continue; }
+      g.globalAlpha = 0.95;
+      g.drawImage(this.sprites[q.v || 0], q.x - size * .32, q.y - size * .32, size * .64, size * .64);
+      g.globalAlpha = 1;
+    }
+
+    // sklo zepředu
+    g.save();
+    g.strokeStyle = 'rgba(8,12,24,.55)'; g.lineWidth = Math.max(3, W * .018);
+    g.stroke(this.upper); g.stroke(this.lower);
+    g.strokeStyle = 'rgba(226,238,255,.45)'; g.lineWidth = 1.2;
+    g.stroke(this.upper); g.stroke(this.lower);
+    g.globalCompositeOperation = 'screen';
+    var tint = g.createLinearGradient(0, this.yBot - size * 9, 0, this.yBot);
+    tint.addColorStop(0, 'rgba(0,0,0,0)');
+    tint.addColorStop(1, (shades(st.barva)[0] || '#ffffff') + '26');
+    g.fillStyle = tint; g.fill(this.lower);
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = Math.max(3, W * .016);
+    g.beginPath();
+    g.moveTo(cx - this.half * .55, this.yTop + H * .05);
+    g.quadraticCurveTo(cx - this.half * .7, this.yMid - H * .2, cx - this.neck - 2, this.yMid - 8);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(cx - this.neck - 2, this.yMid + 10);
+    g.quadraticCurveTo(cx - this.half * .62, this.yMid + H * .2, cx - this.half * .5, this.yBot - H * .06);
+    g.stroke();
+    g.fillStyle = 'rgba(230,240,255,.10)';
+    g.fillRect(cx - this.neck, this.yMid - 4, this.neck * 2, 8);
+    g.restore();
+
+    // záře koleje
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    var glow = g.createRadialGradient(cx, this.yBot - H * .1, 4, cx, this.yBot - H * .1, this.half * 1.6);
+    glow.addColorStop(0, (shades(st.barva)[0] || '#ffffff') + '33');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, this.yMid, W, H - this.yMid);
+    g.restore();
+  };
+
+  // ---------------------------------------------------------------- číslo
+  function Odometer(el) {
+    this.cols = [];
+    for (var i = 0; i < 4; i++) {
+      var c = document.createElement('div'); c.className = 'col';
+      var strip = document.createElement('div'); strip.className = 'strip';
+      for (var d = 0; d < 10; d++) {
+        var cell = document.createElement('div'); cell.textContent = String(d); strip.appendChild(cell);
+      }
+      c.appendChild(strip); el.appendChild(c); this.cols.push({ col: c, strip: strip, val: -2 });
+    }
+  }
+  Odometer.prototype.set = function (n) {
+    var s = String(Math.max(0, Math.round(n)));
+    while (s.length < 4) s = ' ' + s;
+    for (var i = 0; i < 4; i++) {
+      var col = this.cols[i], v = s.charAt(i) === ' ' ? -1 : Number(s.charAt(i));
+      if (col.val === v) continue;
+      var first = col.val === -2;
+      col.val = v;
+      col.col.style.visibility = v < 0 ? 'hidden' : 'visible';
+      if (first) col.strip.style.transition = 'none';
+      col.strip.style.transform = 'translateY(' + (-v * 5.4) + 'vh)';
+      if (first) requestAnimationFrame(function () { col.strip.style.transition = ''; });
+    }
+  };
+
+  // ---------------------------------------------------------------- stavba scény
+  var row = document.getElementById('row');
+
+  function build(houses) {
+    row.innerHTML = '';
+    glasses = [];
+    houses.forEach(function (h) {
+      var box = document.createElement('div'); box.className = 'house';
+      var n = document.createElement('div'); n.className = 'hname'; n.textContent = h.nazev;
+      var gm = document.createElement('div'); gm.className = 'hgem'; gm.textContent = h.drahokam || '';
+      box.appendChild(n); box.appendChild(gm);
+      var wrap = document.createElement('div'); wrap.className = 'glass';
+      box.appendChild(wrap);
+      var st = { id: h.id, nazev: h.nazev, barva: h.barva, drahokam: h.drahokam, target: 0, shown: 0 };
+      var gl = new Glass(wrap, st);
+      var sc = document.createElement('div'); sc.className = 'score';
+      var od = document.createElement('div'); od.className = 'od'; sc.appendChild(od);
+      box.appendChild(sc);
+      var cap = document.createElement('div'); cap.className = 'cap'; box.appendChild(cap);
+      row.appendChild(box);
+      gl.odo = new Odometer(od); gl.cap = cap;
+      gl.resize();
+      glasses.push(gl);
+      state.push(st);
+    });
+  }
+
+  function recalc() {
+    var max = 0;
+    state.forEach(function (s) { max = Math.max(max, s.target); });
+    var next = niceCeil(Math.max(60, max * 1.04));
+    if (next !== capacity) {
+      capacity = next;
+      glasses.forEach(function (g) { g.build(); });
+    }
+    glasses.forEach(function (g) {
+      var per = Math.max(1, Math.round(capacity / Math.max(1, g.slots.length)));
+      if (g.cap) g.cap.textContent = '1 drahokam ≈ ' + per + ' b.';
+    });
+  }
+
+  // ---------------------------------------------------------------- data
+  var loadedCfg = false;
+
+  var firstScore = true;
+
+  function applyScore(j) {
+    if (!j || !j.ok || !Array.isArray(j.houses)) return;
+    var played = false;
+    j.houses.forEach(function (h, idx) {
+      var st = null;
+      for (var i = 0; i < state.length; i++) if (state[i].id === h.id) st = state[i];
+      if (!st) return;
+      var v = Number(h.body) || 0;
+      if (v > st.target + 0.5 && !played) { sndPlus(); played = true; }
+      if (v < st.target - 0.5 && !played) { sndMinus(); played = true; }
+      st.target = v;
+      if (firstScore) st.shown = v;
+    });
+    firstScore = false;
+
+    // změna vedení
+    var leader = null, best = -1;
+    state.forEach(function (s) {
+      if (s.target > best) { best = s.target; leader = s.id; }
+    });
+    if (lastLeader && leader !== lastLeader && best > 0) {
+      setTimeout(sndLead, 700);
+    }
+    lastLeader = leader;
+    if (j.active) document.getElementById('sub').textContent = j.active;
+  }
+
+  var fail = 0;
+  function tick() {
+    fetch('/api/pohar/score', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        fail = 0;
+        setNet(false);
+        if (loadedCfg) { applyScore(j); recalc(); }
+      })
+      .catch(function () {
+        fail++;
+        if (fail >= 2) setNet(true);
+      })
+      .then(function () { setTimeout(tick, 1500); });
+  }
+
+  function setNet(off) {
+    var el = document.getElementById('net');
+    if (off) { el.textContent = 'čekám na spojení'; el.className = 'net off'; }
+    else { el.textContent = 'připojeno'; el.className = 'net'; }
+  }
+
+  fetch('/api/pohar/cfg')
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || !j.ok || !j.koleje || !j.koleje.length) throw new Error('bez konfigurace');
+      document.getElementById('sub').textContent = j.obdobi || 'školní rok';
+      build(j.koleje);
+      loadedCfg = true;
+      tick();
+    })
+    .catch(function () {
+      document.getElementById('sub').textContent = 'tabulka neodpovídá — zkusím to znovu';
+      setTimeout(function () { location.reload(); }, 5000);
+    });
+
+  // ---------------------------------------------------------------- smyčka
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    for (var i = 0; i < glasses.length; i++) {
+      glasses[i].draw(dt);
+      glasses[i].odo.set(glasses[i].st.shown);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  var rt;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { glasses.forEach(function (g) { g.resize(); }); }, 120);
+  });
+
+  // zvuk: tlačítko + odemčení prvním dotykem (kvůli autoplay politice)
+  var sndBtn = document.getElementById('snd');
+  sndBtn.textContent = sndOn ? '🔊' : '🔇';
+  sndBtn.onclick = function () {
+    sndOn = !sndOn;
+    localStorage.setItem('pohar.snd', sndOn ? '1' : '0');
+    sndBtn.textContent = sndOn ? '🔊' : '🔇';
+    if (sndOn) { audio(); tone(880, .2, 'sine', .06); }
+  };
+  document.addEventListener('click', function () { audio(); }, { once: true });
+  document.addEventListener('keydown', function () { audio(); }, { once: true });
+
+  document.addEventListener('visibilitychange', function () { last = performance.now(); });
+})();
+</script>
+</body>
+</html>

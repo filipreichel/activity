@@ -23,6 +23,31 @@ přidávat vlastní výrazy do společné databáze; hra losuje v pořadí
 | `vercel.json` | `outputDirectory: "."` (statický web v kořeni) + `maxDuration` pro funkci |
 | `perlicky/` | druhá hra na stejné doméně: **Perličky češtiny** (týmový kvíz, `/perlicky/`) — viz níže |
 
+
+## Školní pohár (`/pohar/`)
+
+Bodování čtyř kolejí s přesýpacími hodinami. Data **nejsou** v Redisu — jediný zdroj
+pravdy je Google Sheet `Školní pohár` (viz `~/AI/projects/hermes/school/NAVRH-POHAR.md`),
+ke kterému se mluví přes **Apps Script Web App**; ten volá náš proxy, protože školní
+organizace nedovolí založit Google Cloud projekt (žádný service account, žádný OAuth).
+
+| Soubor | Co je uvnitř |
+|---|---|
+| `pohar/index.html` | obrazovka na TV: čtyři skleněné hodiny, drahokamy, sypání, zvuk; jen pro čtení, bez přihlášení |
+| `pohar/zapis.html` | zápis z telefonu: kolej → číslo (±) → poznámka; jméno si pamatuje v `localStorage`, klíč chodí v `?k=` |
+| `pohar/sw.js`, `pohar/manifest-*.webmanifest` | shell pro plochu a offline otevření |
+| `api/pohar/score.js` | `GET` součty, `s-maxage=1` (obrazovka se ptá každých 1,5 s) |
+| `api/pohar/cfg.js` | `GET` koleje a období, keš 60 s |
+| `api/pohar/body.js`, `api/pohar/undo.js` | `POST` zápis / vrácení; přidávají `POHAR_SECRET` a posílají do Apps Scriptu |
+
+Env: `POHAR_SCRIPT` (URL končící `/exec`), `POHAR_SECRET`. Bez nich vrátí proxy `503`.
+
+**Pasti:** Apps Script vrací `302` na `script.googleusercontent.com` — `curl` bez `-L`
+ukáže prázdno a `--post302` rozbije odpověď (posílat `-L` bez něj). Když je deployment
+„Anyone within domain", v URL je `/a/macros/<doména>/` a obrazovka na TV dostane login.
+Součty se počítají z listu, takže **ruční přepis v tabulce je platná oprava** a projeví se
+do ~3 s; nikdy k nim nepřidávej druhou kopii (Redis), jinak se rozejdou.
+
 ## Datový model výrazu
 
 ```js
