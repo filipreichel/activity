@@ -5,5 +5,22 @@
     "api/slovnik.js": {
       "maxDuration": 10
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/tv",
+      "destination": "/pohar/cizi-tv.html",
+      "permanent": false
+    },
+    {
+      "source": "/pohar",
+      "destination": "/pohar/",
+      "permanent": false
+    },
+    {
+      "source": "/body",
+      "destination": "/pohar/zapis.html",
+      "permanent": false
+    }
+  ]
 }

@@ -428,11 +428,14 @@
     el.doneBig.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
     el.doneBig.style.color = v > 0 ? '#8ce0a0' : '#ff9a8a';
     var sub = (names || []).join(' · ');
-    if (pending) sub += ' · odesílám…';
+    if (pending) sub += ' · čekejte…';
     else if (queued && queued.length) sub += ' · odešle se později';
     else sub += ' · zapsáno';
     el.doneSub.textContent = sub;
-    document.getElementById('undo').style.visibility = pending ? 'hidden' : 'visible';
+    // dokud nepřijde odpověď, tlačítka nejsou vidět — jinak to vypadá, že se vrací stará karta
+    var vis = pending ? 'hidden' : 'visible';
+    document.getElementById('undo').style.visibility = vis;
+    document.getElementById('again').style.visibility = vis;
     el.done.classList.add('show');
     clearTimeout(lastTimer);
     lastTimer = setTimeout(function () { el.done.classList.remove('show'); }, pending ? 60000 : 7000);
