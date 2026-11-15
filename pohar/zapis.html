@@ -354,50 +354,59 @@
     if (!ids.length || !v) return;
 
     var note = el.note.value.trim();
+    var names = namesFor(ids);
     var todo = ids.map(function (id) {
       return { k: token, jmeno: name, kolej: id, body: v, poznamka: note, eventId: uuid() };
     });
-    var done = [], queued = [];
+
     el.send.disabled = true;
     el.send.classList.add('sending');
     el.send.textContent = 'Zapisuju…';
-
     clearMsg();
-    (function next(i) {
-      if (i >= todo.length) {
+    // karta hned — zpětná vazba je okamžitá, potvrzení dorazí za pár sekund
+    showDone(v, names, [], [], true);
+
+    var done = [], queued = [], failed = 0, left = todo.length;
+    todo.forEach(function (item) {
+      send(item, function (ok, j) {
+        if (ok) done.push(item);
+        else if (j === undefined) { queue(item); queued.push(item); }
+        else failed++;
+        if (--left > 0) return;
+
         el.send.classList.remove('sending');
         el.note.value = '';
         el.pts.value = '';
         syncSign();
         sel = {};
-        el.hint.textContent = 'Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.';
-        showDone(v, namesFor(ids), done, queued);
         paint();
-        return;
-      }
-      send(todo[i], function (ok, j) {
-        if (ok) { done.push(todo[i]); clearMsg(); }
-        else if (j === undefined) { queue(todo[i]); queued.push(todo[i]); }
-        next(i + 1);
+        if (failed) {
+          el.done.classList.remove('show');
+          return;
+        }
+        showDone(v, names, done, queued, false);
       });
-    })(0);
+    });
   };
 
   var queueTimer = setInterval(flush, 20000);
   window.addEventListener('online', flush);
 
   // ---------------------------------------------------------------- potvrzení
-  function showDone(v, names, done, queued) {
-    lastEvents = (done || []).map(function (p) { return p.eventId; });
+  function showDone(v, names, done, queued, pending) {
+    if (!pending) lastEvents = (done || []).map(function (p) { return p.eventId; });
     el.doneBig.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
     el.doneBig.style.color = v > 0 ? '#8ce0a0' : '#ff9a8a';
     var sub = (names || []).join(' · ');
-    if (queued && queued.length) sub += ' · odešle se později';
+    if (pending) sub += ' · odesílám…';
+    else if (queued && queued.length) sub += ' · odešle se později';
+    else sub += ' · zapsáno';
     el.doneSub.textContent = sub;
+    document.getElementById('undo').style.visibility = pending ? 'hidden' : 'visible';
     el.done.classList.add('show');
     clearTimeout(lastTimer);
-    lastTimer = setTimeout(function () { el.done.classList.remove('show'); }, 6000);
-    if (navigator.vibrate) navigator.vibrate(v > 0 ? 30 : [20, 40, 20]);
+    lastTimer = setTimeout(function () { el.done.classList.remove('show'); }, pending ? 60000 : 7000);
+    if (!pending && navigator.vibrate) navigator.vibrate(v > 0 ? 30 : [20, 40, 20]);
   }
 
   document.getElementById('again').onclick = function () { el.done.classList.remove('show'); };
