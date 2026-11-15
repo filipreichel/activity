@@ -54,7 +54,24 @@ const iv = setInterval(() => {
   ok(d.querySelectorAll('.house.on').length === 1, 'po odkliknutí zůstala jedna');
   ok(/Zapsat Havraspár|Zapsat Nebelvír/.test(send.textContent), 'text pro jednu kolej: ' + send.textContent);
 
-  document.title = fails.length ? 'FAIL: ' + fails.join(' | ') : 'PASS-9';
+  // fáze 2: historie zápisů (seed do localStorage a znovu načíst)
+  w.localStorage.setItem('pohar.hist', JSON.stringify([
+    { id: 'a', t: Date.now(), kolej: 'nebelvir', body: 10 },
+    { id: 'b', t: Date.now() - 86400000, kolej: 'mrzimor', body: -5, poznamka: 'pozn' },
+    { id: 'c', t: Date.now(), kolej: 'havraspar', body: 2, rev: true }
+  ]));
+  f.onload = () => {
+    const d2 = f.contentDocument;
+    const rows = d2.querySelectorAll('.hrow');
+    ok(rows.length === 3, 'v historii tři řádky (' + rows.length + ')');
+    ok(/\+10/.test(rows[0].textContent), 'první řádek +10: ' + rows[0].textContent.trim());
+    ok(/−5/.test(rows[1].textContent), 'druhý řádek −5');
+    ok(rows[2].classList.contains('rev'), 'vrácený zápis je přeškrtnutý');
+    ok(d2.getElementById('hist').scrollTop === 0, 'seznam je nahoře');
+    ok(d2.getElementById('histWho').textContent === 'Test', 'v hlavičce jméno');
+    document.title = fails.length ? 'FAIL: ' + fails.join(' | ') : 'PASS-15';
+  };
+  w.location.reload();
 }, 120);
 </script>
 </body></html>

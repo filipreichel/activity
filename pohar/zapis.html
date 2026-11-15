@@ -12,7 +12,8 @@
   :root{ --gold:#e8c66a; --gold-dim:#a8863c; --card:#161327; --line:#2a2440; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{
-    min-height:100vh; font-family:'Trebuchet MS',system-ui,sans-serif; color:#efe6d2;
+    height:100vh; display:flex; flex-direction:column; overflow:hidden;
+    font-family:'Trebuchet MS',system-ui,sans-serif; color:#efe6d2;
     background:radial-gradient(120% 70% at 50% -10%, #1b2340 0%, #0d1020 48%, #06070f 100%);
     padding:14px 14px calc(18px + env(safe-area-inset-bottom));
   }
@@ -72,6 +73,24 @@
   }
   .hint{font-size:13px; color:#7d7666; text-align:center; margin-top:12px; line-height:1.45}
 
+  /* moje zápisy — vlastní scroll, aby tlačítka zůstala nahoře */
+  .histwrap{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; margin-top:16px}
+  .histhead{display:flex; justify-content:space-between; align-items:baseline;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#7d7666; margin:0 2px 6px}
+  .histhead b{color:#cfc8b8; font-weight:600; letter-spacing:0}
+  .hist{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    border-top:1px solid var(--line); padding-top:6px}
+  .hrow{display:flex; align-items:center; gap:9px; padding:8px 4px; border-bottom:1px solid rgba(255,255,255,.05); font-size:14px}
+  .hrow .dot{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+  .hrow .nm{flex:1 1 auto; color:#d9d2c2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .hrow .pt{font-weight:800; font-variant-numeric:tabular-nums; min-width:5ch; text-align:right}
+  .hrow .pt.plus{color:#8ce0a0}
+  .hrow .pt.minus{color:#ff9a8a}
+  .hrow .tm{color:#6f6959; font-size:12px; white-space:nowrap; text-align:right; flex:0 0 auto}
+  .hrow.rev{opacity:.45}
+  .hrow.rev .pt{text-decoration:line-through}
+  .hempty{color:#6f6959; font-size:13.5px; text-align:center; padding:18px 0}
+
   /* potvrzení */
   .done{
     position:fixed; inset:0; background:rgba(6,7,15,.93); backdrop-filter:blur(3px);
@@ -115,6 +134,7 @@
   <button class="who" id="who" title="změnit jméno">…</button>
 </header>
 
+<div class="form">
 <div class="label">Kolej</div>
 <div class="houses" id="houses"></div>
 
@@ -124,12 +144,18 @@
   <input id="pts" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="">
 </div>
 
-<input id="note" type="text" placeholder="Poznámka (nepovinné)" maxlength="200">
+<input id="note" type="text" placeholder="Poznámka (nepovinná)" maxlength="200">
 
 <button class="send" id="send" disabled>Zapsat</button>
 <div class="msg" id="msg"></div>
 <div class="hint" id="hint">Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.</div>
 <div class="off" id="off">📴 Bez signálu — zápis se odešle sám, jakmile bude internet.</div>
+</div>
+
+<div class="histwrap">
+  <div class="histhead"><span>Moje zápisy</span><b id="histWho" style="display:none"></b></div>
+  <div class="hist" id="hist"></div>
+</div>
 
 <div class="ask" id="ask">
   <div class="askbox">
@@ -228,6 +254,7 @@
       el.houses.appendChild(b);
     });
     paint();
+    renderHist(false);
   }).catch(function () {
     el.hint.textContent = 'Konfiguraci se nepodařilo načíst — zkus obnovit stránku.';
   });
@@ -369,8 +396,11 @@
     var done = [], queued = [], failed = 0, left = todo.length;
     todo.forEach(function (item) {
       send(item, function (ok, j) {
-        if (ok) done.push(item);
-        else if (j === undefined) { queue(item); queued.push(item); }
+        if (ok) {
+          done.push(item);
+          histAdd({ id: item.eventId, t: Date.now(), kolej: item.kolej, body: item.body, poznamka: item.poznamka });
+          clearMsg();
+        } else if (j === undefined) { queue(item); queued.push(item); }
         else failed++;
         if (--left > 0) return;
 
@@ -415,6 +445,7 @@
     el.done.classList.remove('show');
     var ids = lastEvents.slice();
     lastEvents = [];
+    ids.forEach(histRevoke);
     var left = ids.length, problems = 0;
     ids.forEach(function (id) {
       fetch('/api/pohar/undo', {
@@ -430,8 +461,63 @@
     });
   };
 
+  // ---------------------------------------------------------------- moje zápisy
+  var HIST_KEY = 'pohar.hist';
+
+  function histLoad() {
+    try { return JSON.parse(LS.getItem(HIST_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function histSave(list) { LS.setItem(HIST_KEY, JSON.stringify(list.slice(0, 200))); }
+
+  function histAdd(entry) {
+    var list = histLoad();
+    for (var i = 0; i < list.length; i++) if (list[i].id === entry.id) return;
+    list.unshift(entry);
+    histSave(list);
+    renderHist(true);
+  }
+  function histRevoke(id) {
+    var list = histLoad();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) list[i].rev = true;
+    histSave(list);
+    renderHist(false);
+  }
+  function houseOf(id) {
+    for (var i = 0; i < houses.length; i++) if (houses[i].id === id) return houses[i];
+    return null;
+  }
+  function fmtTime(ts) {
+    var d = new Date(ts), now = new Date();
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    if (d.toDateString() === now.toDateString()) return hm;
+    return d.getDate() + '.' + (d.getMonth() + 1) + '. ' + hm;
+  }
+  function renderHist(scrollTop) {
+    var box = document.getElementById('hist');
+    var who = document.getElementById('histWho');
+    if (who) who.textContent = name || '';
+    var list = histLoad();
+    if (!list.length) {
+      box.innerHTML = '<div class="hempty">Zatím žádný zápis. Až nějaký uděláš, objeví se tady.</div>';
+      return;
+    }
+    var html = '';
+    list.forEach(function (e) {
+      var h = houseOf(e.kolej);
+      html += '<div class="hrow' + (e.rev ? ' rev' : '') + '">' +
+        '<span class="dot" style="background:' + esc(h ? h.barva : '#888') + '"></span>' +
+        '<span class="nm">' + esc(h ? h.nazev : e.kolej) + (e.poznamka ? ' · ' + esc(e.poznamka) : '') + '</span>' +
+        '<span class="pt ' + (e.body > 0 ? 'plus' : 'minus') + '">' + (e.body > 0 ? '+' : '−') + Math.abs(e.body) + '</span>' +
+        '<span class="tm">' + fmtTime(e.t) + '</span>' +
+        '</div>';
+    });
+    box.innerHTML = html;
+    if (scrollTop) box.scrollTop = 0;
+  }
+
   // ---------------------------------------------------------------- start
   paintWho();
+  renderHist(false);
   if (!name) setTimeout(askName, 300);
   paint();
 

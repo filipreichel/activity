@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><script>
+localStorage.setItem('pohar.hist', JSON.stringify([
+  {id:'a', t:Date.now()-60000, kolej:'nebelvir', body:10, poznamka:'pomoc v hodině'},
+  {id:'b', t:Date.now()-3600000, kolej:'zmijozel', body:-5},
+  {id:'c', t:Date.now()-7200000, kolej:'mrzimor', body:20, poznamka:'sraz koleje'},
+  {id:'d', t:Date.now()-86400000, kolej:'havraspar', body:2},
+  {id:'e', t:Date.now()-90000000, kolej:'nebelvir', body:-10, rev:true}
+]));
+localStorage.setItem('pohar.k','test');
+localStorage.setItem('pohar.jmeno','Jana');
+location.replace('/pohar/zapis.html?k=test');
+</script>

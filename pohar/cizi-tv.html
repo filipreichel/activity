@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Školní pohár — živá data</title>
+<link rel="manifest" href="manifest-tv.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<style>
+  :root{
+    --gold:#e8c66a; --gold-dim:#a8863c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Georgia,'Times New Roman',serif; color:#efe6d2; overflow:hidden;
+    background:
+      radial-gradient(120% 70% at 50% -12%, #1b2340 0%, #0d1020 46%, #06070f 100%), #06070f;
+  }
+  .stage{position:relative; height:100vh; display:flex; flex-direction:column; padding:1.6vh 1.6vw 1vh; overflow:hidden}
+  .glow{position:absolute; border-radius:50%; filter:blur(90px); opacity:.16; pointer-events:none; width:34vw; height:34vw}
+  .g1{background:#e0233a; left:-8vw; top:26vh}
+  .g2{background:#1f9d55; left:22vw; top:12vh}
+  .g3{background:#2b6fd6; right:22vw; top:12vh}
+  .g4{background:#e0a52a; right:-8vw; top:26vh}
+
+  header{text-align:center; position:relative; z-index:2; flex:0 0 auto}
+  h1{
+    font-size:3.9vh; letter-spacing:.26em; font-weight:400; text-transform:uppercase;
+    background:linear-gradient(180deg,#fff3cc,#e8c66a 55%,#9c7a2e);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{font-size:1.6vh; letter-spacing:.3em; color:#8e8676; text-transform:uppercase; margin-top:.4vh}
+
+  main{flex:1 1 auto; display:grid; grid-template-columns:repeat(4,1fr); gap:.6vw; position:relative; z-index:2; min-height:0}
+  .house{display:flex; flex-direction:column; min-height:0; text-align:center}
+  .hname{font-size:3.1vh; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-dim); flex:0 0 auto}
+  .hgem{font-size:1.4vh; letter-spacing:.2em; text-transform:uppercase; color:#6d6759; margin-top:.2vh; flex:0 0 auto}
+  .glass{flex:1 1 auto; min-height:0; position:relative}
+  canvas{display:block; width:100%; height:100%}
+  .score{display:flex; justify-content:center; flex:0 0 auto; font-variant-numeric:tabular-nums}
+  /* Georgia má staříkové číslice (9 a 5 různě vysoké) — čísla proto kreslí lining serif */
+  .od{display:inline-flex; overflow:hidden; height:5.4vh; line-height:5.4vh; font-size:4.9vh; color:#f6edd8;
+      font-family:'Liberation Serif','Noto Serif','DejaVu Serif',serif; font-variant-numeric:lining-nums;
+      text-shadow:0 0 2vh rgba(232,198,106,.35)}
+  .od .col{width:auto; min-width:2.5vh; overflow:hidden; text-align:center}
+  .od .sgn{font-style:normal; visibility:hidden; padding-right:.08em}
+  .od .sgn.on{visibility:visible}
+  .od .strip{transition:transform .85s cubic-bezier(.22,.9,.24,1)}
+  .od .strip div{height:5.4vh}
+  .cap{font-size:1.35vh; color:#6b6656; letter-spacing:.08em; flex:0 0 auto; margin-top:-.2vh}
+  /* blikne, když se změní poměr bodů na drahokam (u všech kolejí naráz) */
+  @keyframes capflash {
+    0%,100% { color:#6b6656; text-shadow:none }
+    15%,45%,75% { color:#ffe9a8; text-shadow:0 0 1.6vh rgba(255,215,120,.9) }
+  }
+  .cap.flash{animation:capflash 2.4s ease-in-out 2}
+
+  footer{
+    flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    font-size:1.45vh; letter-spacing:.14em; color:#6b6656; text-transform:uppercase;
+    padding:.8vh 0 0; position:relative; z-index:2;
+  }
+  footer .mid{flex:1; text-align:center}
+  button.snd{
+    font-family:inherit; font-size:1.5vh; background:rgba(255,255,255,.05); color:#cfc6b0;
+    border:1px solid rgba(232,198,106,.22); border-radius:.6vh; padding:.3vh .9vh; cursor:pointer;
+  }
+  .net{min-width:11ch; text-align:right; transition:color .3s}
+  .net.off{color:#e07a6a}
+
+  /* obloha se hvězdami a rám obrazovky */
+  #sky{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none}
+  .frame{position:absolute; inset:1vh .8vw; border:1px solid rgba(232,198,106,.18);
+    border-radius:.9vh; pointer-events:none; z-index:1;
+    box-shadow:inset 0 0 9vh rgba(0,0,0,.55), inset 0 0 2vh rgba(232,198,106,.05)}
+  .frame::before{content:'✦'; position:absolute; top:-1.5vh; left:50%; transform:translateX(-50%);
+    font-size:1.9vh; color:rgba(232,198,106,.55); text-shadow:0 0 1.4vh rgba(232,198,106,.5)}
+  .frame::after{content:'✦'; position:absolute; bottom:-1.5vh; left:50%; transform:translateX(-50%);
+    font-size:1.9vh; color:rgba(232,198,106,.55); text-shadow:0 0 1.4vh rgba(232,198,106,.5)}
+
+  .crown{font-size:1.5vh; letter-spacing:.9em; color:rgba(232,198,106,.45); margin-bottom:.3vh}
+  h1{font-size:4.2vh; letter-spacing:.28em}
+  h1::before{content:'❖'; font-size:2.6vh; vertical-align:.35vh; margin-right:.5em; color:rgba(232,198,106,.7)}
+  h1::after{content:'❖'; font-size:2.6vh; vertical-align:.35vh; margin-left:.5em; color:rgba(232,198,106,.7)}
+  .rule{width:24vw; height:1px; margin:.7vh auto 0;
+    background:linear-gradient(90deg,transparent,rgba(232,198,106,.6),transparent)}
+  .crestsvg{height:5vh; display:block; margin:0 auto .4vh;
+    filter:drop-shadow(0 0 1.2vh rgba(232,198,106,.22))}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="frame"></div>
+<div class="stage">
+  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="glow g4"></div>
+  <header>
+    <div class="crown">✦ ✦ ✦</div>
+    <h1>Školní pohár</h1>
+    <div class="rule"></div>
+    <div class="sub" id="sub">načítám…</div>
+  </header>
+  <main id="row"></main>
+  <footer>
+    <span class="mid"></span>
+    <span class="net" id="net">připojeno</span>
+    <button class="snd" id="snd" title="zvuk">🔊</button>
+  </footer>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var state = [];          // [{ id, nazev, drahokam, barva, target, shown }]
+  var glasses = [];
+  var capacity = 100;
+  var gemValue = 1;
+  var lastLeader = null;
+  var lastChange = Date.now();
+  var failCount = 0;
+
+  // ---------------------------------------------------------------- barvy
+  function shades(hex) {
+    var h = String(hex || '#888888').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    function ch(s) { var v = parseInt(s, 16); return isNaN(v) ? 128 : v; }
+    var r = ch(h.slice(0, 2)), g = ch(h.slice(2, 4)), b = ch(h.slice(4, 6));
+    function mix(c, k) { return Math.max(0, Math.min(255, Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k)))); }
+    function hex2(x, y, z) { return '#' + [x, y, z].map(function (v) { return v.toString(16).padStart(2, '0'); }).join(''); }
+    return [hex2(mix(r, .34), mix(g, .34), mix(b, .30)), hex2(r, g, b), hex2(mix(r, -.55), mix(g, -.55), mix(b, -.55))];
+  }
+
+  // Zvířata na erbech jsou nakreslená zjednodušená heraldika (lev, had, orel, jezevec),
+  // ne filmové erby — ty jsou cizí kresba, kterou sem kopírovat nechci.
+  function crestCharge(id, light, dark) {
+    if (id === 'nebelvir') {   // lev: hříva, uši, oči, čumák
+      return '<path d="M32 13l4.6 4 6-2 2 6 5.6 2.6-2.6 5.6 3.4 5.2-5.2 3.4.4 6.2-6.2.4-2.6 5.6-5.6-2.6-5.2 3.4-3.4-5.2-6.2.4-.4-6.2-5.2-3.4 3.4-5.2-2.6-5.6 5.6-2.6 2-6 6 2z" fill="' + light + '"/>' +
+             '<circle cx="24" cy="22" r="3.4" fill="' + light + '"/><circle cx="40" cy="22" r="3.4" fill="' + light + '"/>' +
+             '<circle cx="32" cy="31" r="8.4" fill="' + dark + '"/>' +
+             '<circle cx="28.8" cy="29" r="1.5" fill="' + light + '"/><circle cx="35.2" cy="29" r="1.5" fill="' + light + '"/>' +
+             '<path d="M32 32.5l2.6 2.2-2.6 3-2.6-3z" fill="' + light + '"/>';
+    }
+    if (id === 'zmijozel') {   // had
+      return '<path d="M25 22c8.5 4 8.5 10.5 0 14.5s-8.5 10.5 0 14.5" fill="none" stroke="' + light + '" stroke-width="5.2" stroke-linecap="round"/>' +
+             '<circle cx="25" cy="20.5" r="4.6" fill="' + light + '"/>' +
+             '<path d="M21 18l-4-2M21 21l-4 1" stroke="' + light + '" stroke-width="1.6" stroke-linecap="round"/>';
+    }
+    if (id === 'havraspar') {  // orel s roztaženými křídly
+      return '<path d="M32 40l-16-9 4.5 8.5-8.5.8 13.5 6.7 6.5 9.5 6.5-9.5 13.5-6.7-8.5-.8 4.5-8.5z" fill="' + light + '"/>' +
+             '<circle cx="32" cy="33" r="3.4" fill="' + dark + '" opacity=".55"/>';
+    }
+    // mrzimor: jezevec (hlava s ušima a pruhem)
+    return '<path d="M32 19c7.5 0 13 5.5 13 11.5 0 4.4-2.2 7.6-5.6 9.8L32 57l-7.4-16.7c-3.4-2.2-5.6-5.4-5.6-9.8C19 24.5 24.5 19 32 19z" fill="' + light + '"/>' +
+           '<circle cx="20.5" cy="23" r="4.2" fill="' + light + '"/><circle cx="43.5" cy="23" r="4.2" fill="' + light + '"/>' +
+           '<path d="M32 20v24" stroke="' + dark + '" stroke-width="4.4" stroke-linecap="round"/>' +
+           '<circle cx="32" cy="38" r="2.4" fill="' + dark + '"/>';
+  }
+
+  function crestSVG(h) {
+    var sh = shades(h.barva);
+    var id = 'cg' + h.id;
+    //kontrast: na světlém štítu (Mrzimor) musí být zvíře tmavé, na tmavém světlé
+    var hx = h.barva.replace('#', '');
+    if (hx.length === 3) hx = hx[0] + hx[0] + hx[1] + hx[1] + hx[2] + hx[2];
+    var lum = 0.299 * parseInt(hx.slice(0, 2), 16) + 0.587 * parseInt(hx.slice(2, 4), 16) + 0.114 * parseInt(hx.slice(4, 6), 16);
+    var light = lum > 120 ? sh[2] : '#f4e8c4';
+    var dark = lum > 120 ? '#f7eed2' : sh[2];
+    return '<svg viewBox="0 0 64 76" class="crestsvg">' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + sh[1] + '"/><stop offset="1" stop-color="' + sh[2] + '"/>' +
+      '</linearGradient></defs>' +
+      '<path d="M32 2 L60 9 V38 C60 55 47 66 32 73 C17 66 4 55 4 38 V9 Z" fill="url(#' + id + ')" stroke="#c8a862" stroke-width="2.4"/>' +
+      '<path d="M32 6 L56 12 V38 C56 52 45 62 32 68 C19 62 8 52 8 38 V12 Z" fill="none" stroke="rgba(255,240,200,.22)" stroke-width="1"/>' +
+      crestCharge(h.id, light, dark) +
+      '</svg>';
+  }
+
+  function niceCeil(v) {
+    var steps = [50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000];
+    for (var i = 0; i < steps.length; i++) if (v <= steps[i]) return steps[i];
+    return Math.ceil(v / 5000) * 5000;
+  }
+
+  // ---------------------------------------------------------------- zvuk
+  var ac = null;
+  var sndOn = localStorage.getItem('pohar.snd') !== '0';
+  var lastPour = 0;
+
+  function audio() {
+    if (!ac) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type, vol, delay) {
+    var a = audio(); if (!a || !sndOn) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function noise(dur, freq, vol) {
+    var a = audio(); if (!a || !sndOn) return;
+    var n = Math.floor(a.sampleRate * dur);
+    var buf = a.createBuffer(1, n, a.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    var src = a.createBufferSource(); src.buffer = buf;
+    var bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 1.1;
+    var g = a.createGain(); g.gain.value = vol;
+    src.connect(bp); bp.connect(g); g.connect(a.destination);
+    src.start();
+  }
+  function sndPlus() { tone(1046, .5, 'sine', .10); tone(1568, .45, 'sine', .05, .06); }
+  function sndMinus() { tone(146, .35, 'triangle', .12); noise(.18, 320, .05); }
+  function sndLead() { [523, 659, 784, 1046].forEach(function (f, i) { tone(f, .5, 'sine', .08, i * .12); }); }
+  function sndPour() {
+    var now = Date.now();
+    if (now - lastPour < 130) return;
+    lastPour = now;
+    noise(.09, 1600 + Math.random() * 600, .022);
+  }
+
+  // ---------------------------------------------------------------- drahokamy
+  function gemSprites(c1, c2, c3, size) {
+    return [-0.26, 0.04, 0.3].map(function (rot) {
+      var s = document.createElement('canvas');
+      s.width = s.height = size;
+      var g = s.getContext('2d'), r = size / 2;
+      g.translate(r, r); g.rotate(rot);
+      // kámen: šestiboký s fazetami (koruna nahoře, hrot dole)
+      g.beginPath();
+      g.moveTo(0, -r * .96);
+      g.lineTo(r * .78, -r * .34);
+      g.lineTo(r * .78, r * .3);
+      g.lineTo(0, r * .96);
+      g.lineTo(-r * .78, r * .3);
+      g.lineTo(-r * .78, -r * .34);
+      g.closePath();
+      var grad = g.createLinearGradient(-r * .7, -r * .8, r * .7, r * .9);
+      grad.addColorStop(0, c1); grad.addColorStop(.5, c2); grad.addColorStop(1, c3);
+      g.fillStyle = grad; g.fill();
+      // fazety
+      g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = Math.max(.6, size * .035);
+      g.beginPath();
+      g.moveTo(0, -r * .96); g.lineTo(0, r * .96);
+      g.moveTo(0, -r * .3); g.lineTo(r * .78, -r * .34);
+      g.moveTo(0, -r * .3); g.lineTo(-r * .78, -r * .34);
+      g.moveTo(0, -r * .3); g.lineTo(r * .5, r * .62);
+      g.moveTo(0, -r * .3); g.lineTo(-r * .5, r * .62);
+      g.stroke();
+      // horní ploška
+      g.beginPath();
+      g.moveTo(0, -r * .96); g.lineTo(r * .44, -r * .48); g.lineTo(0, -r * .3); g.lineTo(-r * .44, -r * .48);
+      g.closePath();
+      g.fillStyle = 'rgba(255,255,255,.30)'; g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(.6, size * .04);
+      g.stroke();
+      return s;
+    });
+  }
+
+  // ---------------------------------------------------------------- hodiny
+  function Glass(host, st) {
+    this.st = st;
+    this.canvas = document.createElement('canvas');
+    host.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.slots = [];
+    this.particles = [];
+    this.sparks = [];
+    this.sprites = null;
+    this.levelY = 0;
+  }
+
+  Glass.prototype.resize = function () {
+    var cw = this.canvas.clientWidth || 300;
+    var ch = this.canvas.clientHeight || 400;
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.canvas.width = Math.round(cw * dpr);
+    this.canvas.height = Math.round(ch * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = cw; this.H = ch;
+    this.build();
+  };
+
+  Glass.prototype.build = function () {
+    var W = this.W, H = this.H, cx = W / 2;
+    var capT = H * 0.045, capB = H * 0.05, pad = W * 0.045;
+    var yTop = capT + H * 0.02, yBot = H - capB - H * 0.015;
+    var yMid = H / 2, neck = Math.max(5, W * 0.03);
+    var half = Math.min(W / 2 - pad - W * 0.03, (yMid - yTop) * 0.98);
+
+    this.cx = cx; this.half = half; this.neck = neck;
+    this.yTop = yTop; this.yBot = yBot; this.yMid = yMid;
+    this.capT = capT; this.capB = capB;
+
+    var upper = new Path2D();
+    upper.moveTo(cx - half, yTop);
+    upper.quadraticCurveTo(cx - half * 1.02, yMid - H * 0.13, cx - neck, yMid - 4);
+    upper.lineTo(cx + neck, yMid - 4);
+    upper.quadraticCurveTo(cx + half * 1.02, yMid - H * 0.13, cx + half, yTop);
+    upper.closePath();
+    this.upper = upper;
+
+    var lower = new Path2D();
+    lower.moveTo(cx - neck, yMid + 4);
+    lower.lineTo(cx + neck, yMid + 4);
+    lower.quadraticCurveTo(cx + half * 1.02, yMid + H * 0.13, cx + half, yBot);
+    lower.lineTo(cx - half, yBot);
+    lower.quadraticCurveTo(cx - half * 1.02, yMid + H * 0.13, cx - neck, yMid + 4);
+    lower.closePath();
+    this.lower = lower;
+
+    // velikost kamene se hledá tak, aby se do baňky vešlo ~slotsWanted míst
+    var self = this;
+    function makeSlots(gemPx) {
+      var out = [], n = 0, rowH = gemPx * 0.72;
+      for (var y = yBot - gemPx * 0.55; y > yMid + 10; y -= rowH) {
+        for (var x = cx - half + gemPx * 0.5; x < cx + half; x += gemPx * 0.9) {
+          if (self.ctx.isPointInPath(lower, x, y)) {
+            var hh = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            var rnd = hh - Math.floor(hh);
+            out.push({
+              x: x, y: y,
+              dx: (rnd - 0.5) * gemPx * 0.24,
+              dy: ((Math.sin(x * 3.7 + y * 9.1) * 0.5 + 0.5) - 0.5) * gemPx * 0.18,
+              j: rnd, v: n++ % 3
+            });
+          }
+        }
+      }
+      out.sort(function (a, b) {
+        if (Math.abs(a.y - b.y) > 0.6) return b.y - a.y;
+        return Math.abs(a.x - cx) - Math.abs(b.x - cx);
+      });
+      return out;
+    }
+
+    var gem = Math.max(7, Math.min(30, W / 14));
+    var slots = makeSlots(gem);
+    for (var it = 0; it < 5 && slots.length; it++) {
+      var k = Math.sqrt(slots.length / Math.max(20, slotsWanted));
+      if (Math.abs(k - 1) < 0.05) break;
+      gem = Math.max(6, Math.min(34, gem * k));
+      slots = makeSlots(gem);
+    }
+    if (!slots.length) { gem = Math.max(7, W / 14); slots = makeSlots(gem); }
+    this.gem = gem;
+    var sh = shades(this.st.kamen || this.st.barva);
+    this.sprites = gemSprites(sh[0], sh[1], sh[2], Math.round(gem * 1.9));
+    // odspodu nahoru, v řádku od středu k okrajům → hromada roste jako kupka
+    slots.sort(function (a, b) {
+      if (Math.abs(a.y - b.y) > 0.6) return b.y - a.y;
+      return Math.abs(a.x - cx) - Math.abs(b.x - cx);
+    });
+    this.slots = slots;
+    this.tint = (shades(this.st.kamen || this.st.barva)[0] || '#ffffff');
+
+    // jiskry v horní baňce, aby nepůsobila prázdná
+    this.motes = [];
+    for (var m = 0; m < 15; m++) {
+      for (var tr = 0; tr < 40; tr++) {
+        var mx = cx + (Math.random() - .5) * half * 1.7;
+        var my = yTop + Math.random() * (yMid - yTop - 14);
+        if (this.ctx.isPointInPath(upper, mx, my)) {
+          this.motes.push({ x: mx, y: my, r: Math.random() * 2.4 + 1.0,
+                            sp: 0.25 + Math.random() * 0.6, ph: Math.random() * 6.3 });
+          break;
+        }
+      }
+    }
+
+    if (this.cap) this.cap.textContent = '1 drahokam ≈ ' + Math.max(1, gemValue) + ' b.';
+  };
+
+  Glass.prototype.draw = function (dt) {
+    var g = this.ctx, W = this.W, H = this.H, cx = this.cx, st = this.st;
+    this.t = (this.t || 0) + dt;
+
+    // plynulý přesun na novou hodnotu; délka odpovídá počtu kamenů
+    if (st.anim) {
+      var pr = (performance.now() - st.anim.t0) / st.anim.dur;
+      if (pr >= 1) {
+        st.shown = st.anim.to;
+        st.anim = null;
+      } else {
+        var ea = pr < 0.5 ? 2 * pr * pr : 1 - Math.pow(-2 * pr + 2, 2) / 2;
+        st.shown = st.anim.from + (st.anim.to - st.anim.from) * ea;
+      }
+    }
+
+    g.clearRect(0, 0, W, H);
+
+    // dřevo a mosaz
+    var wood = g.createLinearGradient(0, 0, 0, H);
+    wood.addColorStop(0, '#3b2415'); wood.addColorStop(.5, '#241409'); wood.addColorStop(1, '#150b04');
+    g.fillStyle = wood;
+    var capTop = this.capT * .3, capBot = H - this.capB * 1.2;
+    g.fillRect(W * .03, capTop, W * .94, this.capT);
+    g.fillRect(W * .03, capBot, W * .94, this.capB);
+    // léta dřeva
+    g.strokeStyle = 'rgba(255,214,170,.07)'; g.lineWidth = 1;
+    for (var wl = 0; wl < 3; wl++) {
+      var oy = capTop + this.capT * (0.25 + wl * 0.25);
+      g.beginPath(); g.moveTo(W * .05, oy); g.lineTo(W * .95, oy); g.stroke();
+      var oy2 = capBot + this.capB * (0.25 + wl * 0.25);
+      g.beginPath(); g.moveTo(W * .05, oy2); g.lineTo(W * .95, oy2); g.stroke();
+    }
+    var brass = g.createLinearGradient(0, 0, 0, H * .02);
+    brass.addColorStop(0, '#6b5426'); brass.addColorStop(.5, '#c8a862'); brass.addColorStop(1, '#4a3818');
+    g.fillStyle = brass;
+    g.fillRect(W * .05, this.yTop - H * .012, W * .9, Math.max(2, H * .006));
+    g.fillRect(W * .05, this.yBot + H * .006, W * .9, Math.max(2, H * .006));
+    g.fillStyle = '#3a2416';
+    g.fillRect(W * .03, this.capT * .3, W * .022, H - this.capB * 1.5);
+    g.fillRect(W - W * .052, this.capT * .3, W * .022, H - this.capB * 1.5);
+
+    // sklo zezadu
+    var glassGrad = g.createLinearGradient(0, this.yTop, 0, this.yBot);
+    glassGrad.addColorStop(0, 'rgba(150,180,220,.07)');
+    glassGrad.addColorStop(.5, 'rgba(190,210,240,.12)');
+    glassGrad.addColorStop(1, 'rgba(150,180,220,.07)');
+    g.fillStyle = glassGrad;
+    g.fill(this.upper); g.fill(this.lower);
+
+    // horní baňka: jemná mlha v barvě koleje + pomalé jiskry
+    g.save();
+    g.clip(this.upper);
+    var my0 = this.yTop + (this.yMid - this.yTop) * 0.55;
+    var mist = g.createRadialGradient(cx, my0, 4, cx, my0, this.half * 1.25);
+    mist.addColorStop(0, this.tint + '4a');
+    mist.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = mist;
+    g.fillRect(0, this.yTop, W, this.yMid - this.yTop);
+    var motes = this.motes || [];
+    for (var q2 = 0; q2 < motes.length; q2++) {
+      var mo = motes[q2];
+      var yy = mo.y - ((this.t * mo.sp * 22) % 90);
+      if (yy < this.yTop + 6) continue;
+      g.globalAlpha = 0.3 + 0.55 * Math.abs(Math.sin(this.t * mo.sp + mo.ph));
+      g.fillStyle = this.tint;
+      g.beginPath(); g.arc(mo.x, yy, mo.r, 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.restore();
+
+    // hromada
+    var count = Math.round(st.shown / Math.max(1, gemValue));
+    if (count < 0) count = 0;
+    if (count > this.slots.length) count = this.slots.length;
+    var frac = capacity > 0 ? Math.max(0, Math.min(1, st.shown / capacity)) : 0;
+    var levelY = count > 0 ? this.slots[count - 1].y : this.yBot;
+    this.levelY = levelY;
+    var size = this.gem;
+    g.save();
+    g.clip(this.lower);
+    if (count > 0) {
+      var sh = g.createLinearGradient(0, this.yBot - size * 2.6, 0, this.yBot);
+      sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.55)');
+      g.fillStyle = sh;
+      g.fillRect(cx - this.half, this.yBot - size * 2.6, this.half * 2, size * 2.6);
+    }
+    for (var i = 0; i < count; i++) {
+      var s = this.slots[i];
+      var sc = 0.92 + s.j * 0.14;
+      g.globalAlpha = 0.82 + s.j * 0.18;
+      g.drawImage(this.sprites[s.v], s.x - size * sc / 2 + s.dx, s.y - size * sc / 2 + s.dy, size * sc, size * sc);
+    }
+    g.globalAlpha = 1;
+    if (count > 0 && frac < 0.995) {
+      var halo = g.createRadialGradient(cx, levelY + size * .4, 2, cx, levelY + size * .4, size * 3.2);
+      halo.addColorStop(0, 'rgba(255,255,255,.26)');
+      halo.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = halo;
+      g.beginPath(); g.arc(cx, levelY + size * .4, size * 3.2, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+
+    // sypání / drolení — počet padajících kamenů odpovídá velikosti dávky
+    var an = st.anim;
+    var rate = 0, dust = false;
+    if (an) {
+      var stones = Math.abs(an.to - an.from) / Math.max(1, gemValue);
+      rate = Math.min(45, stones / Math.max(0.4, an.dur / 1000));
+      dust = an.to < an.from;
+    }
+    if (rate > 0 && Math.random() < Math.min(1, rate * dt)) {
+      if (!dust) sndPour();
+      this.particles.push({
+        x: cx + (Math.random() - .5) * 7, y: this.yMid + 2,
+        vy: 60 + Math.random() * 140, vx: (Math.random() - .5) * 26,
+        v: Math.floor(Math.random() * 3), dust: dust
+      });
+    }
+    for (var p = this.particles.length - 1; p >= 0; p--) {
+      var q = this.particles[p];
+      q.vy += 900 * dt; q.y += q.vy * dt; q.x += q.vx * dt;
+      var hit = levelY + (1 - Math.pow((q.x - cx) / this.half, 2)) * size * 2.6;
+      if ((q.y > hit && q.y > this.yMid + size * 3) || q.y > this.yBot) {
+        for (var k = 0; k < 3; k++) {
+          this.sparks.push({
+            x: q.x, y: Math.min(q.y, this.yBot),
+            vx: (Math.random() - .5) * 70, vy: -Math.random() * 80, life: 1
+          });
+        }
+        this.particles.splice(p, 1); continue;
+      }
+      g.globalAlpha = q.dust ? 0.5 : 0.95;
+      if (q.dust) {
+        g.fillStyle = '#b9b3a4';
+        g.beginPath(); g.arc(q.x, q.y, Math.max(1, size * 0.18), 0, Math.PI * 2); g.fill();
+      } else {
+        g.drawImage(this.sprites[q.v || 0], q.x - size * .32, q.y - size * .32, size * .64, size * .64);
+      }
+      g.globalAlpha = 1;
+    }
+
+    // jiskry při dopadu
+    for (var sk = this.sparks.length - 1; sk >= 0; sk--) {
+      var sp = this.sparks[sk];
+      sp.x += sp.vx * dt; sp.y += sp.vy * dt; sp.vy += 170 * dt; sp.life -= dt * 1.5;
+      if (sp.life <= 0) { this.sparks.splice(sk, 1); continue; }
+      g.globalAlpha = Math.max(0, sp.life) * 0.9;
+      g.fillStyle = sp.c || '#ffe9a8';
+      g.beginPath(); g.arc(sp.x, sp.y, Math.max(1, size * 0.11), 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+
+    // sklo zepředu
+    g.save();
+    g.strokeStyle = 'rgba(8,12,24,.55)'; g.lineWidth = Math.max(3, W * .018);
+    g.stroke(this.upper); g.stroke(this.lower);
+    g.strokeStyle = 'rgba(226,238,255,.45)'; g.lineWidth = 1.2;
+    g.stroke(this.upper); g.stroke(this.lower);
+    g.globalCompositeOperation = 'screen';
+    var tint = g.createLinearGradient(0, this.yBot - size * 9, 0, this.yBot);
+    tint.addColorStop(0, 'rgba(0,0,0,0)');
+    tint.addColorStop(1, (shades(st.kamen || st.barva)[0] || '#ffffff') + '26');
+    g.fillStyle = tint; g.fill(this.lower);
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = Math.max(3, W * .016);
+    g.beginPath();
+    g.moveTo(cx - this.half * .55, this.yTop + H * .05);
+    g.quadraticCurveTo(cx - this.half * .7, this.yMid - H * .2, cx - this.neck - 2, this.yMid - 8);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(cx - this.neck - 2, this.yMid + 10);
+    g.quadraticCurveTo(cx - this.half * .62, this.yMid + H * .2, cx - this.half * .5, this.yBot - H * .06);
+    g.stroke();
+    g.fillStyle = 'rgba(230,240,255,.10)';
+    g.fillRect(cx - this.neck, this.yMid - 4, this.neck * 2, 8);
+    g.restore();
+
+    // záře koleje
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    var glow = g.createRadialGradient(cx, this.yBot - H * .1, 4, cx, this.yBot - H * .1, this.half * 1.6);
+    glow.addColorStop(0, (shades(st.barva)[0] || '#ffffff') + '33');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, this.yMid, W, H - this.yMid);
+    g.restore();
+  };
+
+  // ---------------------------------------------------------------- číslo
+  function Odometer(el) {
+    this.cols = [];
+    this.sign = document.createElement('i');
+    this.sign.className = 'sgn';
+    this.sign.textContent = '−';
+    el.appendChild(this.sign);
+    for (var i = 0; i < 4; i++) {
+      var c = document.createElement('div'); c.className = 'col';
+      var strip = document.createElement('div'); strip.className = 'strip';
+      for (var d = 0; d < 10; d++) {
+        var cell = document.createElement('div'); cell.textContent = String(d); strip.appendChild(cell);
+      }
+      c.appendChild(strip); el.appendChild(c); this.cols.push({ col: c, strip: strip, val: -2 });
+    }
+  }
+  Odometer.prototype.set = function (n) {
+    var neg = n < -0.5;
+    if (this.sign.classList.contains('on') !== neg) this.sign.classList.toggle('on', neg);
+    var s = String(Math.round(Math.abs(n)));
+    while (s.length < 4) s = ' ' + s;
+    for (var i = 0; i < 4; i++) {
+      var col = this.cols[i], v = s.charAt(i) === ' ' ? -1 : Number(s.charAt(i));
+      if (col.val === v) continue;
+      var first = col.val === -2;
+      col.val = v;
+      col.col.style.display = v < 0 ? 'none' : '';
+      if (first) col.strip.style.transition = 'none';
+      col.strip.style.transform = 'translateY(' + (-v * 5.4) + 'vh)';
+      if (first) requestAnimationFrame(function () { col.strip.style.transition = ''; });
+    }
+  };
+
+  // ---------------------------------------------------------------- stavba scény
+  var row = document.getElementById('row');
+
+  function build(houses) {
+    row.innerHTML = '';
+    glasses = [];
+    houses.forEach(function (h) {
+      var box = document.createElement('div'); box.className = 'house';
+      var cr = document.createElement('div'); cr.innerHTML = crestSVG(h); box.appendChild(cr);
+      var n = document.createElement('div'); n.className = 'hname'; n.textContent = h.nazev;
+      var gm = document.createElement('div'); gm.className = 'hgem'; gm.textContent = h.drahokam || '';
+      box.appendChild(n); box.appendChild(gm);
+      var wrap = document.createElement('div'); wrap.className = 'glass';
+      box.appendChild(wrap);
+      var st = { id: h.id, nazev: h.nazev, barva: h.barva, drahokam: h.drahokam,
+                 kamen: h.barva_kamene || h.barva, target: 0, shown: 0 };
+      var gl = new Glass(wrap, st);
+      var sc = document.createElement('div'); sc.className = 'score';
+      var od = document.createElement('div'); od.className = 'od'; sc.appendChild(od);
+      box.appendChild(sc);
+      var cap = document.createElement('div'); cap.className = 'cap'; box.appendChild(cap);
+      row.appendChild(box);
+      gl.odo = new Odometer(od); gl.cap = cap;
+      gl.resize();
+      glasses.push(gl);
+      state.push(st);
+    });
+  }
+
+  // PRAVIDLO (jedno pro všechny koleje):
+  //  1) kapacita = zaokrouhleno nahoru (50/100/200/500/1000/…) z vedoucí koleje × 1,12
+  //     — roste hned, zmenšuje se až 30 s po poklesu vedoucího pod 55 % kapacity
+  //  2) hodnota drahokamu = 1/2/5/10/20/50/100/250/500 tak, aby se do nádoby vešlo ~90 kamenů
+  //  3) kamenů se kreslí přesně tolik, kolik odpovídá podílu skóre ÷ hodnota drahokamu
+  //     (popisek „1 drahokam = N b." je proto závazný, ne přibližný)
+  var GEM_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 250, 500];
+  var lastShrink = 0;
+  var slotsWanted = 90;
+
+  function pickGem(cap) {
+    var best = GEM_STEPS[0], bestErr = Infinity;
+    for (var i = 0; i < GEM_STEPS.length; i++) {
+      var err = Math.abs(cap / GEM_STEPS[i] - 90);
+      if (err < bestErr) { bestErr = err; best = GEM_STEPS[i]; }
+    }
+    return best;
+  }
+
+  function recalc() {
+    var max = 0;
+    state.forEach(function (s) { max = Math.max(max, s.target); });
+
+    var nextCap = niceCeil(Math.max(100, max * 1.25));
+    var now = Date.now();
+    if (nextCap < capacity) {
+      if (max > capacity * 0.55 || now - lastShrink < 30000) nextCap = capacity;
+      else lastShrink = now;
+    }
+    var nextGem = pickGem(nextCap);
+    var rebuilt = (nextCap !== capacity || nextGem !== gemValue);
+    capacity = nextCap;
+    gemValue = nextGem;
+    slotsWanted = Math.max(40, Math.min(200, Math.round(capacity / gemValue)));
+    if (rebuilt) glasses.forEach(function (g) { g.build(); });
+
+    var label = '1 drahokam = ' + gemValue + ' b.';
+    glasses.forEach(function (g) {
+      if (!g.cap || g.cap.textContent === label) return;
+      g.cap.textContent = label;
+      g.cap.classList.remove('flash');
+      void g.cap.offsetWidth;
+      g.cap.classList.add('flash');
+    });
+  }
+
+  // ---------------------------------------------------------------- data (cizí API)
+  // Tato stránka čte hotový endpoint z jiné aplikace: vrací {"Nebelvír":120, ...}
+  var API = 'https://script.google.com/macros/s/AKfycbzWMLKH7wCI9UoBfm1FtsNx2tLckttQFjisyPM2NC4IsmATR8gr5u2qOCJTQVw84KG4/exec';
+  var POLL_MS = 5000;
+
+  var HOUSES = [
+    { id: 'nebelvir',  nazev: 'Nebelvír',  key: 'Nebelvír',  barva: '#AE0001', drahokam: 'rubíny',   barva_kamene: '' },
+    { id: 'zmijozel',  nazev: 'Zmijozel',  key: 'Zmijozel',  barva: '#1A7F37', drahokam: 'smaragdy',  barva_kamene: '' },
+    { id: 'havraspar', nazev: 'Havraspár', key: 'Havraspár', barva: '#0E4D92', drahokam: 'safíry',    barva_kamene: '' },
+    { id: 'mrzimor',   nazev: 'Mrzimor',   key: 'Mrzimor',   barva: '#D4A017', drahokam: 'diamanty',  barva_kamene: '#F3F0E4' }
+  ];
+
+  var firstScore = true;
+
+  function startAnim(st, v) {
+    var diff = Math.abs(v - st.shown);
+    var dur = Math.min(6000, Math.max(700, diff / Math.max(1, gemValue) * 350));
+    st.anim = { from: st.shown, to: v, t0: performance.now(), dur: dur };
+    st.target = v;
+  }
+
+  function applyData(j) {
+    if (!j || typeof j !== 'object') return;
+    var played = false;
+
+    HOUSES.forEach(function (h) {
+      var st = null;
+      for (var i = 0; i < state.length; i++) if (state[i].id === h.id) st = state[i];
+      if (!st) return;
+      var v = Number(j[h.key]);
+      if (isNaN(v)) v = 0;
+      if (firstScore) { st.shown = v; st.target = v; return; }
+      if (v === st.target) return;
+      if (v > st.target && !played) { sndPlus(); played = true; }
+      if (v < st.target && !played) { sndMinus(); played = true; }
+      startAnim(st, v);
+    });
+    if (firstScore) { firstScore = false; return; }
+
+    var leader = null, best = -1e9;
+    state.forEach(function (s) { if (s.target > best) { best = s.target; leader = s.id; } });
+    if (lastLeader && leader !== lastLeader && best > 0) setTimeout(sndLead, 700);
+    lastLeader = leader;
+    recalc();
+  }
+
+  var fail = 0;
+  function tick() {
+    fetch(API, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { fail = 0; setNet(false); applyData(j); })
+      .catch(function () { if (++fail >= 2) setNet(true); })
+      .then(function () { setTimeout(tick, POLL_MS); });
+  }
+
+  function setNet(off) {
+    var el = document.getElementById('net');
+    if (off) { el.textContent = 'čekám na spojení'; el.className = 'net off'; }
+    else { el.textContent = 'připojeno'; el.className = 'net'; }
+  }
+
+  document.getElementById('sub').style.display = 'none';
+  build(HOUSES);
+  tick();
+
+  // ---------------------------------------------------------------- obloha
+  var sky = document.getElementById('sky');
+  var skyCtx = sky.getContext('2d');
+  var stars = [];
+
+  function skyResize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var w = window.innerWidth, h = window.innerHeight;
+    sky.width = Math.round(w * dpr);
+    sky.height = Math.round(h * dpr);
+    skyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = [];
+    var n = Math.round(w * h / 11000);
+    for (var i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * w,
+        y: Math.random() * h * 0.8,
+        r: Math.random() * 1.4 + 0.3,
+        ph: Math.random() * Math.PI * 2,
+        sp: 0.35 + Math.random() * 1.1,
+        warm: i % 6 === 0
+      });
+    }
+  }
+  skyResize();
+
+  function drawSky(t) {
+    var w = window.innerWidth, h = window.innerHeight;
+    skyCtx.clearRect(0, 0, w, h);
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      skyCtx.globalAlpha = 0.3 + 0.55 * Math.abs(Math.sin(t * s.sp * 0.6 + s.ph));
+      skyCtx.fillStyle = s.warm ? '#ffe9b8' : '#dde7ff';
+      skyCtx.beginPath();
+      skyCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      skyCtx.fill();
+    }
+    skyCtx.globalAlpha = 1;
+  }
+
+  // ---------------------------------------------------------------- smyčka
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    drawSky(now / 1000);
+    for (var i = 0; i < glasses.length; i++) {
+      glasses[i].draw(dt);
+      glasses[i].odo.set(glasses[i].st.shown);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  var rt;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { glasses.forEach(function (g) { g.resize(); }); skyResize(); }, 120);
+  });
+
+  // zvuk: tlačítko + odemčení prvním dotykem (kvůli autoplay politice)
+  var sndBtn = document.getElementById('snd');
+  sndBtn.textContent = sndOn ? '🔊' : '🔇';
+  sndBtn.onclick = function () {
+    sndOn = !sndOn;
+    localStorage.setItem('pohar.snd', sndOn ? '1' : '0');
+    sndBtn.textContent = sndOn ? '🔊' : '🔇';
+    if (sndOn) { audio(); tone(880, .2, 'sine', .06); }
+  };
+  document.addEventListener('click', function () { audio(); }, { once: true });
+  document.addEventListener('keydown', function () { audio(); }, { once: true });
+
+  document.addEventListener('visibilitychange', function () { last = performance.now(); });
+})();
+</script>
+</body>
+</html>
