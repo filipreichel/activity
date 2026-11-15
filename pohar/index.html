@@ -108,6 +108,7 @@
   var state = [];          // [{ id, nazev, drahokam, barva, target, shown }]
   var glasses = [];
   var capacity = 100;
+  var gemValue = 1;
   var lastLeader = null;
   var lastChange = Date.now();
   var failCount = 0;
@@ -300,6 +301,11 @@
         }
       }
     }
+    // odspodu nahoru, v řádku od středu k okrajům → hromada roste jako kupka
+    slots.sort(function (a, b) {
+      if (Math.abs(a.y - b.y) > 0.6) return b.y - a.y;
+      return Math.abs(a.x - cx) - Math.abs(b.x - cx);
+    });
     this.slots = slots;
     this.tint = (shades(this.st.barva)[0] || '#ffffff');
 
@@ -317,8 +323,7 @@
       }
     }
 
-    var per = Math.max(1, Math.round(capacity / Math.max(1, slots.length)));
-    if (this.cap) this.cap.textContent = '1 drahokam ≈ ' + per + ' b.';
+    if (this.cap) this.cap.textContent = '1 drahokam ≈ ' + Math.max(1, gemValue) + ' b.';
   };
 
   Glass.prototype.draw = function (dt) {
@@ -544,16 +549,39 @@
     });
   }
 
+  // PRAVIDLO: nádoba je vždy „plná“ podle vedoucí koleje, drahokam se přepočítá
+  //  1) gemValue = nejmenší z 1/2/5/10/20/50/100/200/500, aby vedoucí měl ≤ 70 kamenů
+  //  2) capacity = zaokrouhleno nahoru (50/100/200/500/1000/…) z vedoucího × 1,12
+  //  3) zmenšuje se až 30 s poté, co vedoucí klesne pod 55 % kapacity (jinak by poskakovala)
+  var GEM_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
+  var lastShrink = 0;
+
+  function pickGem(max) {
+    for (var i = 0; i < GEM_STEPS.length; i++) {
+      if (max / GEM_STEPS[i] <= 70) return GEM_STEPS[i];
+    }
+    return GEM_STEPS[GEM_STEPS.length - 1];
+  }
+
   function recalc() {
     var max = 0;
     state.forEach(function (s) { max = Math.max(max, s.target); });
-    var next = niceCeil(Math.max(60, max * 1.04));
-    if (next !== capacity) {
-      capacity = next;
+
+    var nextCap = niceCeil(Math.max(50, max * 1.12));
+    var now = Date.now();
+    if (nextCap < capacity) {
+      if (max > capacity * 0.55 || now - lastShrink < 30000) nextCap = capacity;
+      else lastShrink = now;
+    }
+
+    if (nextCap !== capacity) {
+      capacity = nextCap;
       glasses.forEach(function (g) { g.build(); });
     }
+    var slots = glasses.length ? glasses[0].slots.length : 100;
+    var per = Math.max(1, Math.round(capacity / Math.max(1, slots)));
+    gemValue = per;
     glasses.forEach(function (g) {
-      var per = Math.max(1, Math.round(capacity / Math.max(1, g.slots.length)));
       if (g.cap) g.cap.textContent = '1 drahokam ≈ ' + per + ' b.';
     });
   }

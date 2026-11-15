@@ -149,9 +149,8 @@
   if (qs.get('jmeno')) LS.setItem('pohar.jmeno', qs.get('jmeno'));
 
   var houses = [];
-  var sel = null;
-  var negative = false;
-  var lastEvent = null;
+  var sel = {};            // id → true (jde vybrat i víc kolejí naráz)
+  var lastEvents = [];     // eventId posledního zápisu (pro „Vrátit")
   var lastTimer = null;
 
   var el = {
@@ -212,7 +211,7 @@
       b.dataset.id = h.id;
       b.innerHTML = '<span class="gem" style="background:' + esc(h.barva || '#888') + ';color:' + esc(h.barva || '#888') + '"></span>' +
                     '<span class="nm">' + esc(h.nazev) + '</span>';
-      b.onclick = function () { sel = h; paint(); };
+      b.onclick = function () { sel[h.id] = !sel[h.id]; paint(); };
       el.houses.appendChild(b);
     });
     paint();
@@ -221,30 +220,56 @@
   });
 
   // ---------------------------------------------------------------- čísla
+  // mínus lze napsat i z klávesnice („-30"), tlačítko ＋/－ ho jen přepíná
+  function syncSign() {
+    var neg = el.pts.value.charAt(0) === '-';
+    el.sign.textContent = neg ? '－' : '＋';
+    el.sign.classList.toggle('neg', neg);
+  }
   el.sign.onclick = function () {
-    negative = !negative;
-    el.sign.textContent = negative ? '－' : '＋';
-    el.sign.classList.toggle('neg', negative);
+    var v = el.pts.value;
+    el.pts.value = v.charAt(0) === '-' ? v.slice(1) : '-' + v;
+    syncSign();
     paint();
   };
   el.pts.addEventListener('input', function () {
-    el.pts.value = el.pts.value.replace(/[^0-9]/g, '').slice(0, 4);
+    var raw = el.pts.value;
+    var neg = raw.charAt(0) === '-';
+    var digits = raw.replace(/[^0-9]/g, '').slice(0, 4);
+    el.pts.value = (neg ? '-' : '') + digits;
+    syncSign();
     paint();
   });
   function value() {
-    var n = parseInt(el.pts.value || '0', 10) || 0;
-    return negative ? -n : n;
+    var n = parseInt(el.pts.value || '0', 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function selectedIds() {
+    var out = [];
+    houses.forEach(function (h) { if (sel[h.id]) out.push(h.id); });
+    return out;
+  }
+  function namesFor(ids) {
+    return ids.map(function (id) {
+      for (var i = 0; i < houses.length; i++) if (houses[i].id === id) return houses[i].nazev;
+      return id;
+    });
   }
 
   function paint() {
     Array.prototype.forEach.call(el.houses.children, function (b) {
-      b.classList.toggle('on', !!sel && b.dataset.id === sel.id);
+      b.classList.toggle('on', !!sel[b.dataset.id]);
     });
-    var v = value();
-    el.send.disabled = !(sel && v !== 0);
-    el.send.textContent = sel && v !== 0
-      ? 'Zapsat ' + sel.nazev + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)
-      : 'Zapsat';
+    var ids = selectedIds(), v = value();
+    el.send.disabled = !(ids.length && v !== 0);
+    if (!ids.length || v === 0) {
+      el.send.textContent = 'Zapsat';
+    } else if (ids.length === 1) {
+      el.send.textContent = 'Zapsat ' + namesFor(ids)[0] + ' ' + (v > 0 ? '+' : '−') + Math.abs(v);
+    } else {
+      el.send.textContent = 'Zapsat ' + (v > 0 ? '+' : '−') + Math.abs(v) + ' do ' + ids.length + ' kolejí';
+    }
   }
 
   // ---------------------------------------------------------------- odeslání
@@ -253,9 +278,6 @@
     return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   }
 
-  function payload() {
-    return { k: token, jmeno: name, kolej: sel.id, body: value(), poznamka: el.note.value.trim(), eventId: uuid() };
-  }
 
   function queue(p) {
     var q = JSON.parse(LS.getItem('pohar.q') || '[]');
@@ -292,33 +314,46 @@
   el.send.onclick = function () {
     if (!name) { askName(); return; }
     var v = value();
-    if (!sel || !v) return;
-    var p = payload();
+    var ids = selectedIds();
+    if (!ids.length || !v) return;
+
+    var note = el.note.value.trim();
+    var todo = ids.map(function (id) {
+      return { k: token, jmeno: name, kolej: id, body: v, poznamka: note, eventId: uuid() };
+    });
+    var done = [], queued = [];
     el.send.disabled = true;
-    send(p, function (ok, j) {
-      if (ok) {
-        showDone(v, sel.nazev, p);
+    el.hint.textContent = 'Zapisuju…';
+
+    (function next(i) {
+      if (i >= todo.length) {
         el.note.value = '';
         el.pts.value = '';
-        negative = false; el.sign.textContent = '＋'; el.sign.classList.remove('neg');
-      } else if (j === undefined) {
-        queue(p);
-        el.note.value = ''; el.pts.value = '';
-        showDone(v, sel.nazev, p, true);
+        syncSign();
+        el.hint.textContent = 'Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.';
+        showDone(v, namesFor(ids), done, queued);
+        paint();
+        return;
       }
-      paint();
-    });
+      send(todo[i], function (ok, j) {
+        if (ok) done.push(todo[i]);
+        else if (j === undefined) { queue(todo[i]); queued.push(todo[i]); }
+        next(i + 1);
+      });
+    })(0);
   };
 
   var queueTimer = setInterval(flush, 20000);
   window.addEventListener('online', flush);
 
   // ---------------------------------------------------------------- potvrzení
-  function showDone(v, houseName, p, queued) {
-    lastEvent = { id: p.eventId, v: v, house: houseName };
+  function showDone(v, names, done, queued) {
+    lastEvents = (done || []).map(function (p) { return p.eventId; });
     el.doneBig.textContent = (v > 0 ? '+' : '−') + Math.abs(v);
     el.doneBig.style.color = v > 0 ? '#8ce0a0' : '#ff9a8a';
-    el.doneSub.textContent = houseName + (queued ? ' · odešle se později' : '');
+    var sub = (names || []).join(' · ');
+    if (queued && queued.length) sub += ' · odešle se později';
+    el.doneSub.textContent = sub;
     el.done.classList.add('show');
     clearTimeout(lastTimer);
     lastTimer = setTimeout(function () { el.done.classList.remove('show'); }, 6000);
@@ -327,14 +362,23 @@
 
   document.getElementById('again').onclick = function () { el.done.classList.remove('show'); };
   document.getElementById('undo').onclick = function () {
-    if (!lastEvent) return;
+    if (!lastEvents.length) return;
     el.done.classList.remove('show');
-    fetch('/api/pohar/undo', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ k: token, jmeno: name, eventId: lastEvent.id })
-    }).then(function (r) { return r.json(); }).then(function (j) {
-      el.hint.textContent = (j && j.ok) ? 'Vráceno.' : ((j && j.error) || 'Vrátit se nepovedlo.');
-    }).catch(function () { el.hint.textContent = 'Vrátit se nepovedlo — bez signálu.'; });
+    var ids = lastEvents.slice();
+    lastEvents = [];
+    var left = ids.length, problems = 0;
+    ids.forEach(function (id) {
+      fetch('/api/pohar/undo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ k: token, jmeno: name, eventId: id })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!(j && j.ok)) problems++;
+      }).catch(function () { problems++; }).then(function () {
+        if (--left === 0) {
+          el.hint.textContent = problems ? 'Část vrácení se nepovedla — zkontroluj tabulku.' : 'Vráceno.';
+        }
+      });
+    });
   };
 
   // ---------------------------------------------------------------- start
