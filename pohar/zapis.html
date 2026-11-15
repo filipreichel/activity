@@ -111,19 +111,11 @@
   <button class="sign" id="sign" title="znaménko">＋</button>
   <input id="pts" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="">
 </div>
-<div class="chips" id="chips">
-  <button class="chip" data-v="5">+5</button>
-  <button class="chip" data-v="10">+10</button>
-  <button class="chip" data-v="20">+20</button>
-  <button class="chip" data-v="-5">−5</button>
-  <button class="chip" data-v="-10">−10</button>
-  <button class="chip" data-v="-20">−20</button>
-</div>
 
 <input id="note" type="text" placeholder="Poznámka (nepovinné)" maxlength="200">
 
 <button class="send" id="send" disabled>Zapsat</button>
-<div class="hint" id="hint">Vyber kolej a napiš počet bodů. Kladné i záporné.</div>
+<div class="hint" id="hint">Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.</div>
 <div class="off" id="off">📴 Bez signálu — zápis se odešle sám, jakmile bude internet.</div>
 
 <div class="ask" id="ask">
@@ -239,17 +231,6 @@
     el.pts.value = el.pts.value.replace(/[^0-9]/g, '').slice(0, 4);
     paint();
   });
-  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (c) {
-    c.onclick = function () {
-      var v = Number(c.dataset.v);
-      negative = v < 0;
-      el.sign.textContent = negative ? '－' : '＋';
-      el.sign.classList.toggle('neg', negative);
-      el.pts.value = String(Math.abs(v));
-      paint();
-    };
-  });
-
   function value() {
     var n = parseInt(el.pts.value || '0', 10) || 0;
     return negative ? -n : n;

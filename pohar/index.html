@@ -44,7 +44,7 @@
   .od{display:inline-flex; overflow:hidden; height:5.4vh; line-height:5.4vh; font-size:4.9vh; color:#f6edd8;
       font-family:'Liberation Serif','Noto Serif','DejaVu Serif',serif; font-variant-numeric:lining-nums;
       text-shadow:0 0 2vh rgba(232,198,106,.35)}
-  .od .col{width:3.4vh; overflow:hidden; text-align:center}
+  .od .col{width:auto; min-width:2.5vh; overflow:hidden; text-align:center}
   .od .strip{transition:transform .85s cubic-bezier(.22,.9,.24,1)}
   .od .strip div{height:5.4vh}
   .cap{font-size:1.3vh; color:#5f5a4d; letter-spacing:.08em; flex:0 0 auto; margin-top:-.2vh}
@@ -61,13 +61,36 @@
   }
   .net{min-width:11ch; text-align:right; transition:color .3s}
   .net.off{color:#e07a6a}
+
+  /* obloha se hvězdami a rám obrazovky */
+  #sky{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none}
+  .frame{position:absolute; inset:1vh .8vw; border:1px solid rgba(232,198,106,.18);
+    border-radius:.9vh; pointer-events:none; z-index:1;
+    box-shadow:inset 0 0 9vh rgba(0,0,0,.55), inset 0 0 2vh rgba(232,198,106,.05)}
+  .frame::before{content:'✦'; position:absolute; top:-1.5vh; left:50%; transform:translateX(-50%);
+    font-size:1.9vh; color:rgba(232,198,106,.55); text-shadow:0 0 1.4vh rgba(232,198,106,.5)}
+  .frame::after{content:'✦'; position:absolute; bottom:-1.5vh; left:50%; transform:translateX(-50%);
+    font-size:1.9vh; color:rgba(232,198,106,.55); text-shadow:0 0 1.4vh rgba(232,198,106,.5)}
+
+  .crown{font-size:1.5vh; letter-spacing:.9em; color:rgba(232,198,106,.45); margin-bottom:.3vh}
+  h1{font-size:4.2vh; letter-spacing:.28em}
+  h1::before{content:'❖'; font-size:2.6vh; vertical-align:.35vh; margin-right:.5em; color:rgba(232,198,106,.7)}
+  h1::after{content:'❖'; font-size:2.6vh; vertical-align:.35vh; margin-left:.5em; color:rgba(232,198,106,.7)}
+  .rule{width:24vw; height:1px; margin:.7vh auto 0;
+    background:linear-gradient(90deg,transparent,rgba(232,198,106,.6),transparent)}
+  .crestsvg{height:5vh; display:block; margin:0 auto .4vh;
+    filter:drop-shadow(0 0 1.2vh rgba(232,198,106,.22))}
 </style>
 </head>
 <body>
+<canvas id="sky"></canvas>
+<div class="frame"></div>
 <div class="stage">
   <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="glow g4"></div>
   <header>
+    <div class="crown">✦ ✦ ✦</div>
     <h1>Školní pohár</h1>
+    <div class="rule"></div>
     <div class="sub" id="sub">načítám…</div>
   </header>
   <main id="row"></main>
@@ -98,6 +121,19 @@
     function mix(c, k) { return Math.max(0, Math.min(255, Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k)))); }
     function hex2(x, y, z) { return '#' + [x, y, z].map(function (v) { return v.toString(16).padStart(2, '0'); }).join(''); }
     return [hex2(mix(r, .34), mix(g, .34), mix(b, .30)), hex2(r, g, b), hex2(mix(r, -.55), mix(g, -.55), mix(b, -.55))];
+  }
+
+  function crestSVG(h) {
+    var sh = shades(h.barva);
+    var id = 'cg' + h.id;
+    return '<svg viewBox="0 0 64 76" class="crestsvg">' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="' + sh[1] + '"/><stop offset="1" stop-color="' + sh[2] + '"/>' +
+      '</linearGradient></defs>' +
+      '<path d="M32 2 L60 9 V38 C60 55 47 66 32 73 C17 66 4 55 4 38 V9 Z" fill="url(#' + id + ')" stroke="#c8a862" stroke-width="2.4"/>' +
+      '<path d="M32 22 L45 34 L32 56 L19 34 Z" fill="' + sh[0] + '" fill-opacity=".92" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>' +
+      '<path d="M32 22 L45 34 L32 34 Z" fill="rgba(255,255,255,.42)"/>' +
+      '</svg>';
   }
 
   function niceCeil(v) {
@@ -160,23 +196,34 @@
       s.width = s.height = size;
       var g = s.getContext('2d'), r = size / 2;
       g.translate(r, r); g.rotate(rot);
+      // kámen: šestiboký s fazetami (koruna nahoře, hrot dole)
       g.beginPath();
-      for (var i = 0; i < 6; i++) {
-        var a = -Math.PI / 2 + i * (Math.PI / 3);
-        var rr = i % 2 === 0 ? r * 0.92 : r * 0.72;
-        var x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-        i ? g.lineTo(x, y) : g.moveTo(x, y);
-      }
+      g.moveTo(0, -r * .96);
+      g.lineTo(r * .78, -r * .34);
+      g.lineTo(r * .78, r * .3);
+      g.lineTo(0, r * .96);
+      g.lineTo(-r * .78, r * .3);
+      g.lineTo(-r * .78, -r * .34);
       g.closePath();
-      var grad = g.createLinearGradient(-r, -r, r, r);
-      grad.addColorStop(0, c1); grad.addColorStop(.55, c2); grad.addColorStop(1, c3);
+      var grad = g.createLinearGradient(-r * .7, -r * .8, r * .7, r * .9);
+      grad.addColorStop(0, c1); grad.addColorStop(.5, c2); grad.addColorStop(1, c3);
       g.fillStyle = grad; g.fill();
-      g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = Math.max(1, size * .05); g.stroke();
+      // fazety
+      g.strokeStyle = 'rgba(255,255,255,.28)'; g.lineWidth = Math.max(.6, size * .035);
       g.beginPath();
-      g.moveTo(-r * .34, -r * .5); g.lineTo(0, -r * .1); g.lineTo(-r * .1, r * .42); g.lineTo(-r * .5, r * .04);
-      g.closePath(); g.fillStyle = 'rgba(255,255,255,.40)'; g.fill();
-      g.beginPath(); g.arc(-r * .22, -r * .3, r * .13, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(255,255,255,.75)'; g.fill();
+      g.moveTo(0, -r * .96); g.lineTo(0, r * .96);
+      g.moveTo(0, -r * .3); g.lineTo(r * .78, -r * .34);
+      g.moveTo(0, -r * .3); g.lineTo(-r * .78, -r * .34);
+      g.moveTo(0, -r * .3); g.lineTo(r * .5, r * .62);
+      g.moveTo(0, -r * .3); g.lineTo(-r * .5, r * .62);
+      g.stroke();
+      // horní ploška
+      g.beginPath();
+      g.moveTo(0, -r * .96); g.lineTo(r * .44, -r * .48); g.lineTo(0, -r * .3); g.lineTo(-r * .44, -r * .48);
+      g.closePath();
+      g.fillStyle = 'rgba(255,255,255,.30)'; g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = Math.max(.6, size * .04);
+      g.stroke();
       return s;
     });
   }
@@ -189,6 +236,7 @@
     this.ctx = this.canvas.getContext('2d');
     this.slots = [];
     this.particles = [];
+    this.sparks = [];
     this.sprites = null;
     this.levelY = 0;
   }
@@ -253,12 +301,29 @@
       }
     }
     this.slots = slots;
+    this.tint = (shades(this.st.barva)[0] || '#ffffff');
+
+    // jiskry v horní baňce, aby nepůsobila prázdná
+    this.motes = [];
+    for (var m = 0; m < 15; m++) {
+      for (var tr = 0; tr < 40; tr++) {
+        var mx = cx + (Math.random() - .5) * half * 1.7;
+        var my = yTop + Math.random() * (yMid - yTop - 14);
+        if (this.ctx.isPointInPath(upper, mx, my)) {
+          this.motes.push({ x: mx, y: my, r: Math.random() * 2.4 + 1.0,
+                            sp: 0.25 + Math.random() * 0.6, ph: Math.random() * 6.3 });
+          break;
+        }
+      }
+    }
+
     var per = Math.max(1, Math.round(capacity / Math.max(1, slots.length)));
     if (this.cap) this.cap.textContent = '1 drahokam ≈ ' + per + ' b.';
   };
 
   Glass.prototype.draw = function (dt) {
     var g = this.ctx, W = this.W, H = this.H, cx = this.cx, st = this.st;
+    this.t = (this.t || 0) + dt;
     var k = Math.min(1, dt * 4.2);
     st.shown += (st.target - st.shown) * k;
     if (Math.abs(st.target - st.shown) < 0.4) st.shown = st.target;
@@ -266,9 +331,20 @@
     g.clearRect(0, 0, W, H);
 
     // dřevo a mosaz
-    g.fillStyle = '#2b1a10';
-    g.fillRect(W * .03, this.capT * .3, W * .94, this.capT);
-    g.fillRect(W * .03, H - this.capB * 1.2, W * .94, this.capB);
+    var wood = g.createLinearGradient(0, 0, 0, H);
+    wood.addColorStop(0, '#3b2415'); wood.addColorStop(.5, '#241409'); wood.addColorStop(1, '#150b04');
+    g.fillStyle = wood;
+    var capTop = this.capT * .3, capBot = H - this.capB * 1.2;
+    g.fillRect(W * .03, capTop, W * .94, this.capT);
+    g.fillRect(W * .03, capBot, W * .94, this.capB);
+    // léta dřeva
+    g.strokeStyle = 'rgba(255,214,170,.07)'; g.lineWidth = 1;
+    for (var wl = 0; wl < 3; wl++) {
+      var oy = capTop + this.capT * (0.25 + wl * 0.25);
+      g.beginPath(); g.moveTo(W * .05, oy); g.lineTo(W * .95, oy); g.stroke();
+      var oy2 = capBot + this.capB * (0.25 + wl * 0.25);
+      g.beginPath(); g.moveTo(W * .05, oy2); g.lineTo(W * .95, oy2); g.stroke();
+    }
     var brass = g.createLinearGradient(0, 0, 0, H * .02);
     brass.addColorStop(0, '#6b5426'); brass.addColorStop(.5, '#c8a862'); brass.addColorStop(1, '#4a3818');
     g.fillStyle = brass;
@@ -286,6 +362,27 @@
     g.fillStyle = glassGrad;
     g.fill(this.upper); g.fill(this.lower);
 
+    // horní baňka: jemná mlha v barvě koleje + pomalé jiskry
+    g.save();
+    g.clip(this.upper);
+    var my0 = this.yTop + (this.yMid - this.yTop) * 0.55;
+    var mist = g.createRadialGradient(cx, my0, 4, cx, my0, this.half * 1.25);
+    mist.addColorStop(0, this.tint + '4a');
+    mist.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = mist;
+    g.fillRect(0, this.yTop, W, this.yMid - this.yTop);
+    var motes = this.motes || [];
+    for (var q2 = 0; q2 < motes.length; q2++) {
+      var mo = motes[q2];
+      var yy = mo.y - ((this.t * mo.sp * 22) % 90);
+      if (yy < this.yTop + 6) continue;
+      g.globalAlpha = 0.3 + 0.55 * Math.abs(Math.sin(this.t * mo.sp + mo.ph));
+      g.fillStyle = this.tint;
+      g.beginPath(); g.arc(mo.x, yy, mo.r, 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.restore();
+
     // hromada
     var frac = capacity > 0 ? Math.max(0, Math.min(1, st.shown / capacity)) : 0;
     var levelY = this.yBot - (this.yBot - (this.yMid + this.gem * 1.6)) * frac;
@@ -301,9 +398,11 @@
       var s = this.slots[i];
       var dome = (1 - Math.pow((s.x - cx) / this.half, 2)) * size * 2.6;
       if (s.y < levelY - dome) continue;
-      var sc = 0.93 + s.j * 0.13;
+      var sc = 0.92 + s.j * 0.14;
+      g.globalAlpha = 0.82 + s.j * 0.18;
       g.drawImage(this.sprites[s.v], s.x - size * sc / 2 + s.dx, s.y - size * sc / 2 + s.dy, size * sc, size * sc);
     }
+    g.globalAlpha = 1;
     if (frac > 0.02 && frac < 0.995) {
       var halo = g.createRadialGradient(cx, levelY + size * .4, 2, cx, levelY + size * .4, size * 3.2);
       halo.addColorStop(0, 'rgba(255,255,255,.26)');
@@ -329,11 +428,30 @@
       var q = this.particles[p];
       q.vy += 900 * dt; q.y += q.vy * dt; q.x += q.vx * dt;
       var hit = levelY + (1 - Math.pow((q.x - cx) / this.half, 2)) * size * 2.6;
-      if ((q.y > hit && q.y > this.yMid + size * 3) || q.y > this.yBot) { this.particles.splice(p, 1); continue; }
+      if ((q.y > hit && q.y > this.yMid + size * 3) || q.y > this.yBot) {
+        for (var k = 0; k < 3; k++) {
+          this.sparks.push({
+            x: q.x, y: Math.min(q.y, this.yBot),
+            vx: (Math.random() - .5) * 70, vy: -Math.random() * 80, life: 1
+          });
+        }
+        this.particles.splice(p, 1); continue;
+      }
       g.globalAlpha = 0.95;
       g.drawImage(this.sprites[q.v || 0], q.x - size * .32, q.y - size * .32, size * .64, size * .64);
       g.globalAlpha = 1;
     }
+
+    // jiskry při dopadu
+    for (var sk = this.sparks.length - 1; sk >= 0; sk--) {
+      var sp = this.sparks[sk];
+      sp.x += sp.vx * dt; sp.y += sp.vy * dt; sp.vy += 170 * dt; sp.life -= dt * 1.5;
+      if (sp.life <= 0) { this.sparks.splice(sk, 1); continue; }
+      g.globalAlpha = Math.max(0, sp.life) * 0.9;
+      g.fillStyle = '#ffe9a8';
+      g.beginPath(); g.arc(sp.x, sp.y, Math.max(1, size * 0.11), 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
 
     // sklo zepředu
     g.save();
@@ -391,7 +509,7 @@
       if (col.val === v) continue;
       var first = col.val === -2;
       col.val = v;
-      col.col.style.visibility = v < 0 ? 'hidden' : 'visible';
+      col.col.style.display = v < 0 ? 'none' : '';
       if (first) col.strip.style.transition = 'none';
       col.strip.style.transform = 'translateY(' + (-v * 5.4) + 'vh)';
       if (first) requestAnimationFrame(function () { col.strip.style.transition = ''; });
@@ -406,6 +524,7 @@
     glasses = [];
     houses.forEach(function (h) {
       var box = document.createElement('div'); box.className = 'house';
+      var cr = document.createElement('div'); cr.innerHTML = crestSVG(h); box.appendChild(cr);
       var n = document.createElement('div'); n.className = 'hname'; n.textContent = h.nazev;
       var gm = document.createElement('div'); gm.className = 'hgem'; gm.textContent = h.drahokam || '';
       box.appendChild(n); box.appendChild(gm);
@@ -507,11 +626,52 @@
       setTimeout(function () { location.reload(); }, 5000);
     });
 
+  // ---------------------------------------------------------------- obloha
+  var sky = document.getElementById('sky');
+  var skyCtx = sky.getContext('2d');
+  var stars = [];
+
+  function skyResize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var w = window.innerWidth, h = window.innerHeight;
+    sky.width = Math.round(w * dpr);
+    sky.height = Math.round(h * dpr);
+    skyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = [];
+    var n = Math.round(w * h / 11000);
+    for (var i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * w,
+        y: Math.random() * h * 0.8,
+        r: Math.random() * 1.4 + 0.3,
+        ph: Math.random() * Math.PI * 2,
+        sp: 0.35 + Math.random() * 1.1,
+        warm: i % 6 === 0
+      });
+    }
+  }
+  skyResize();
+
+  function drawSky(t) {
+    var w = window.innerWidth, h = window.innerHeight;
+    skyCtx.clearRect(0, 0, w, h);
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      skyCtx.globalAlpha = 0.3 + 0.55 * Math.abs(Math.sin(t * s.sp * 0.6 + s.ph));
+      skyCtx.fillStyle = s.warm ? '#ffe9b8' : '#dde7ff';
+      skyCtx.beginPath();
+      skyCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      skyCtx.fill();
+    }
+    skyCtx.globalAlpha = 1;
+  }
+
   // ---------------------------------------------------------------- smyčka
   var last = performance.now();
   function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    drawSky(now / 1000);
     for (var i = 0; i < glasses.length; i++) {
       glasses[i].draw(dt);
       glasses[i].odo.set(glasses[i].st.shown);
@@ -523,7 +683,7 @@
   var rt;
   window.addEventListener('resize', function () {
     clearTimeout(rt);
-    rt = setTimeout(function () { glasses.forEach(function (g) { g.resize(); }); }, 120);
+    rt = setTimeout(function () { glasses.forEach(function (g) { g.resize(); }); skyResize(); }, 120);
   });
 
   // zvuk: tlačítko + odemčení prvním dotykem (kvůli autoplay politice)
