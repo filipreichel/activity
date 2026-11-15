@@ -15,5 +15,10 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'jen POST' });
   const b = req.body || {};
   if (!b.eventId) return send(res, 400, { ok: false, error: 'chybí eventId' });
-  return forward(res, { action: 'undo', token: String(b.k || ''), eventId: String(b.eventId) });
+  return forward(res, {
+    action: 'undo',
+    token: String(b.k || ''),
+    jmeno: String(b.jmeno || '').slice(0, 40),
+    eventId: String(b.eventId),
+  });
 };

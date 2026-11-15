@@ -39,10 +39,9 @@ module.exports = async function handler(req, res) {
   return forward(res, {
     action: 'body',
     token: String(b.k || ''),
+    jmeno: String(b.jmeno || '').slice(0, 40),
     kolej: String(b.kolej || ''),
     body: pts,
-    kategorie: String(b.kategorie || '').slice(0, 40),
-    zaci: String(b.zaci || '').slice(0, 80),
     poznamka: String(b.poznamka || '').slice(0, 200),
     eventId: String(b.eventId || ''),
   });
