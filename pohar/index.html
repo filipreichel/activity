@@ -283,7 +283,7 @@
 
     var gem = Math.max(8, Math.min(18, W / 15));
     this.gem = gem;
-    var sh = shades(this.st.barva);
+    var sh = shades(this.st.kamen || this.st.barva);
     this.sprites = gemSprites(sh[0], sh[1], sh[2], Math.round(gem * 1.9));
 
     var slots = [], n = 0, rowH = gem * 0.72;
@@ -307,7 +307,7 @@
       return Math.abs(a.x - cx) - Math.abs(b.x - cx);
     });
     this.slots = slots;
-    this.tint = (shades(this.st.barva)[0] || '#ffffff');
+    this.tint = (shades(this.st.kamen || this.st.barva)[0] || '#ffffff');
 
     // jiskry v horní baňce, aby nepůsobila prázdná
     this.motes = [];
@@ -467,7 +467,7 @@
     g.globalCompositeOperation = 'screen';
     var tint = g.createLinearGradient(0, this.yBot - size * 9, 0, this.yBot);
     tint.addColorStop(0, 'rgba(0,0,0,0)');
-    tint.addColorStop(1, (shades(st.barva)[0] || '#ffffff') + '26');
+    tint.addColorStop(1, (shades(st.kamen || st.barva)[0] || '#ffffff') + '26');
     g.fillStyle = tint; g.fill(this.lower);
     g.globalCompositeOperation = 'source-over';
     g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = Math.max(3, W * .016);
@@ -535,7 +535,8 @@
       box.appendChild(n); box.appendChild(gm);
       var wrap = document.createElement('div'); wrap.className = 'glass';
       box.appendChild(wrap);
-      var st = { id: h.id, nazev: h.nazev, barva: h.barva, drahokam: h.drahokam, target: 0, shown: 0 };
+      var st = { id: h.id, nazev: h.nazev, barva: h.barva, drahokam: h.drahokam,
+                 kamen: h.barva_kamene || h.barva, target: 0, shown: 0 };
       var gl = new Glass(wrap, st);
       var sc = document.createElement('div'); sc.className = 'score';
       var od = document.createElement('div'); od.className = 'od'; sc.appendChild(od);

@@ -81,6 +81,12 @@
   .off{font-size:12.5px; color:#e0a06a; text-align:center; margin-top:8px; display:none}
   .off.show{display:block}
 
+  /* chybová zpráva, ať je vidět, proč se zápis nepovedl */
+  .msg{display:none; margin-top:12px; padding:12px 14px; border-radius:14px; font-size:14.5px; line-height:1.45;
+    background:rgba(224,60,60,.12); border:1px solid rgba(224,60,60,.45); color:#ffc9c1}
+  .msg.show{display:block}
+  .msg b{color:#fff}
+
   /* jméno při prvním otevření */
   .ask{position:fixed; inset:0; background:rgba(6,7,15,.94); backdrop-filter:blur(4px);
     display:none; align-items:center; justify-content:center; padding:22px; z-index:20}
@@ -115,6 +121,7 @@
 <input id="note" type="text" placeholder="Poznámka (nepovinné)" maxlength="200">
 
 <button class="send" id="send" disabled>Zapsat</button>
+<div class="msg" id="msg"></div>
 <div class="hint" id="hint">Vyber kolej a napiš počet bodů. Tlačítkem ＋/－ přepneš znaménko.</div>
 <div class="off" id="off">📴 Bez signálu — zápis se odešle sám, jakmile bude internet.</div>
 
@@ -294,6 +301,29 @@
     });
   }
 
+  function showMsg(text) {
+    var el2 = document.getElementById('msg');
+    el2.innerHTML = text;
+    el2.classList.add('show');
+  }
+  function clearMsg() {
+    var el2 = document.getElementById('msg');
+    el2.classList.remove('show');
+    el2.innerHTML = '';
+  }
+  // server vrací technické hlášky — tady se překládají do řeči, které jde rozumět
+  function friendly(j) {
+    var e = String((j && j.error) || '');
+    if (e.indexOf('neznámý odkaz') >= 0) {
+      return '<b>Aplikace ještě není propojená s tabulkou.</b> Chybí nová verze skriptu v Apps Scriptu — ozvi se Filipovi, sám to neopravíš.';
+    }
+    if (e.indexOf('příliš rychle') >= 0) return 'Počkej prosím 2 sekundy mezi zápisy.';
+    if (e.indexOf('neznámá kolej') >= 0) return 'Tuhle kolej tabulka nezná — obnov stránku.';
+    if (e.indexOf('celé číslo') >= 0) return 'Zadej celé číslo (bez desetinné čárky), nejvýš ±500.';
+    if (e.indexOf('špatný klíč') >= 0) return '<b>Špatné nastavení serveru</b> — ozvi se Filipovi.';
+    return e ? ('Zápis se nepovedl: ' + e) : 'Zápis se nepovedl, zkus to znovu.';
+  }
+
   function send(p, cb) {
     fetch('/api/pohar/body', {
       method: 'POST',
@@ -304,7 +334,7 @@
         cb && cb(true, j);
         return;
       }
-      el.hint.textContent = (j && j.error) || 'Zápis se nepovedl.';
+      showMsg(friendly(j));
       cb && cb(false, j);
     }).catch(function () {
       cb && cb(false);
@@ -325,6 +355,7 @@
     el.send.disabled = true;
     el.hint.textContent = 'Zapisuju…';
 
+    clearMsg();
     (function next(i) {
       if (i >= todo.length) {
         el.note.value = '';
@@ -336,7 +367,7 @@
         return;
       }
       send(todo[i], function (ok, j) {
-        if (ok) done.push(todo[i]);
+        if (ok) { done.push(todo[i]); clearMsg(); }
         else if (j === undefined) { queue(todo[i]); queued.push(todo[i]); }
         next(i + 1);
       });
